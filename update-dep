@@ -1,0 +1,30 @@
+#!/bin/bash
+
+set -e -x
+
+export GOPATH=$PWD
+
+deps=$PWD/deps.txt
+
+rm -f $deps
+
+cd src
+
+# Remove all deps
+find * -maxdepth 3 -type d | grep -v '^github.com\(/cppforlife\(/bosh-lint.*\)*\)*$' | xargs rm -rf
+
+go get -d -t -v github.com/cppforlife/bosh-lint/...
+
+# Secondary GOPATH
+mv github.com/cloudfoundry/bosh-cli/{vendor,src}
+
+# Remove all .git folders
+dirs=$(find * -type d -name '.git')
+
+for dir in $dirs; do
+  # Capture deps info
+  echo "$(cd $dir/.. && git rev-parse --short HEAD) $dir" >> $deps
+
+  # Remove .git directory
+  rm -rf $dir
+done
