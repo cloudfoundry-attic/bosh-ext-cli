@@ -45,7 +45,7 @@ func (c UnusedPackages) Check() ([]check.Suggestion, error) {
 		}
 	}
 
-	for _, unusedName := range allPkgNames {
+	for unusedName, _ := range allPkgNames {
 		sugs = append(sugs, check.Simple{
 			Context_:    c.context,
 			Problem_:    "Unused packages",
