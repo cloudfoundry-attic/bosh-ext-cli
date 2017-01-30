@@ -16,6 +16,7 @@ blobs
 #*
 
 /bin
+!bin/build
 /pkg
 src/github.com/cloudfoundry/bosh-cli/pkg/
 
