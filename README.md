@@ -13,6 +13,8 @@ $ out/bosh-lint lint-release --dir ~/workspace/whatever-release
 
 ## Todo
 
+- release: notice common props between release jobs
+- release: multiple jobs?
 - `set -e` in packaging?
 - pre_packaging presence?
 - job description presence
@@ -22,3 +24,4 @@ $ out/bosh-lint lint-release --dir ~/workspace/whatever-release
 - logrotate presence
 - todo markers
 - consolidate explanation
+- greedy blob inclusion?
