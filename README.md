@@ -15,6 +15,7 @@ $ out/bosh-lint lint-release --dir ~/workspace/whatever-release
 
 - release: notice common props between release jobs
 - release: multiple jobs?
+- release: camelCase vs snake case
 - `set -e` in packaging?
 - pre_packaging presence?
 - job description presence
