@@ -53,7 +53,7 @@ func (r LintableRelease) collectChecks() []check.Check {
 	for _, job := range r.release.Jobs() {
 		ctx := ctx.Nested(fmt.Sprintf("Job '%s'", job.Name()))
 
-		checks = append(checks, check.NewUnderscoredName(ctx, job.Name()))
+		checks = append(checks, check.NewDashedName(ctx, job.Name()))
 		checks = append(checks, NewJobPropertiesSyslogDaemonConfig(ctx, job))
 		checks = append(checks, NewJobPropertiesCertificate(ctx, job))
 		checks = append(checks, NewJobTemplatesCtl(ctx, job))

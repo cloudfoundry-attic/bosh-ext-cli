@@ -53,7 +53,7 @@ func (m LintableManifest) collectChecks() []check.Check {
 
 	ctx := check.NewRootContext("Manifest")
 
-	checks = append(checks, check.NewUnderscoredName(ctx, m.manifest.Name))
+	checks = append(checks, check.NewDashedName(ctx, m.manifest.Name))
 	checks = append(checks, NewRootProperties(ctx, m.manifest.Properties))
 	checks = append(checks, NewTopLevelJobs(ctx, m.manifest.Jobs))
 	checks = append(checks, NewTopLevelNetworks(ctx, m.manifest.Networks))
@@ -63,13 +63,13 @@ func (m LintableManifest) collectChecks() []check.Check {
 	for _, var_ := range m.manifest.Stemcells {
 		ctx := ctx.Nested(fmt.Sprintf("Stemcell '%s'", var_.Alias))
 
-		checks = append(checks, check.NewUnderscoredName(ctx, var_.Alias))
+		checks = append(checks, check.NewDashedName(ctx, var_.Alias))
 	}
 
 	for _, ig := range m.manifest.InstanceGroups {
 		ctx := ctx.Nested(fmt.Sprintf("Instance group '%s'", ig.Name))
 
-		checks = append(checks, check.NewUnderscoredName(ctx, ig.Name))
+		checks = append(checks, check.NewDashedName(ctx, ig.Name))
 		checks = append(checks, NewIGAZs(ctx, ig.AZs))
 		checks = append(checks, NewIGProperties(ctx, ig.Properties))
 		checks = append(checks, NewStaticIPs(ctx, ig.Networks))
@@ -78,7 +78,7 @@ func (m LintableManifest) collectChecks() []check.Check {
 	for _, var_ := range m.manifest.Variables {
 		ctx := ctx.Nested(fmt.Sprintf("Variable '%s'", var_.Name))
 
-		checks = append(checks, check.NewUnderscoredName(ctx, var_.Name))
+		checks = append(checks, check.NewDashedName(ctx, var_.Name))
 	}
 
 	return checks

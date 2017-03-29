@@ -9,13 +9,13 @@ import (
 	check "github.com/cppforlife/bosh-lint/check"
 )
 
-var _ = Describe("UnderscoredName", func() {
+var _ = Describe("DashedName", func() {
 	var (
-		chk check.UnderscoredName
+		chk check.DashedName
 	)
 
 	BeforeEach(func() {
-		chk = check.NewUnderscoredName(check.Context{}, "")
+		chk = check.NewDashedName(check.Context{}, "")
 	})
 
 	Describe("Check", func() {
@@ -29,22 +29,22 @@ var _ = Describe("UnderscoredName", func() {
 			{Name: "", ProblemPiece: "Name does not match suggested regexp"},
 			{Name: "name-", ProblemPiece: "Name does not match suggested regexp"},
 			{Name: "name_", ProblemPiece: "Name does not match suggested regexp"},
-			{Name: "_name", ProblemPiece: "Name does not match suggested regexp"},
-			{Name: "_name_", ProblemPiece: "Name does not match suggested regexp"},
-			{Name: "name-name", ProblemPiece: "Name does not match suggested regexp"},
+			{Name: "-name", ProblemPiece: "Name does not match suggested regexp"},
+			{Name: "-name-", ProblemPiece: "Name does not match suggested regexp"},
+			{Name: "name_name", ProblemPiece: "Name does not match suggested regexp"},
 			{Name: "name.name", ProblemPiece: "Name does not match suggested regexp"},
 
 			// Successful
 			{Name: "name"},
-			{Name: "app_17"},
-			{Name: "app_17_name"},
+			{Name: "app-17"},
+			{Name: "app-17-name"},
 		}
 
 		for _, ex := range examples {
 			ex := ex
 
 			It(fmt.Sprintf("returns suggestion if name is '%s'", ex.Name), func() {
-				chk = check.NewUnderscoredName(check.Context{}, ex.Name)
+				chk = check.NewDashedName(check.Context{}, ex.Name)
 
 				sugs, err := chk.Check()
 				Expect(err).ToNot(HaveOccurred())
