@@ -8,14 +8,26 @@ import (
 	check "github.com/cppforlife/bosh-lint/check"
 )
 
+type JobPropertySecretConfig struct {
+	SecretPatterns []string `yaml:"secret_patterns"`
+	Whitelist      []string `yaml:"whitelist"`
+	check.CheckConfig
+}
+
+var DefaultJobPropertySecretConfig = JobPropertySecretConfig{
+	SecretPatterns: []string{"secret", "password", "token", "passphrase", "key"},
+	Whitelist:      []string{},
+}
+
 type JobPropertySecret struct {
 	context check.Context
 	name    string
 	def     boshjob.PropertyDefinition
+	JobPropertySecretConfig
 }
 
-func NewJobPropertySecret(context check.Context, name string, def boshjob.PropertyDefinition) JobPropertySecret {
-	return JobPropertySecret{context, name, def}
+func NewJobPropertySecret(context check.Context, name string, def boshjob.PropertyDefinition, config JobPropertySecretConfig) JobPropertySecret {
+	return JobPropertySecret{context, name, def, config}
 }
 
 func (c JobPropertySecret) Description() check.Description {
@@ -32,7 +44,13 @@ func (c JobPropertySecret) Check() ([]check.Suggestion, error) {
 		return nil, nil
 	}
 
-	for _, piece := range []string{"secret", "password", "token", "passphrase", "key"} {
+	for _, piece := range c.Whitelist {
+		if strings.Contains(c.name, piece) {
+			return nil, nil
+		}
+	}
+
+	for _, piece := range c.SecretPatterns {
 		if strings.Contains(c.name, piece) {
 			sugs = append(sugs, check.Simple{
 				Context_:    c.context,

@@ -9,10 +9,11 @@ import (
 type JobPropertySkipSSL struct {
 	context check.Context
 	name    string
+	check.CheckConfig
 }
 
-func NewJobPropertySkipSSL(context check.Context, name string) JobPropertySkipSSL {
-	return JobPropertySkipSSL{context, name}
+func NewJobPropertySkipSSL(context check.Context, name string, config check.CheckConfig) JobPropertySkipSSL {
+	return JobPropertySkipSSL{context, name, config}
 }
 
 func (c JobPropertySkipSSL) Description() check.Description {

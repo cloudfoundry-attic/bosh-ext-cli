@@ -15,7 +15,7 @@ var _ = Describe("DashedName", func() {
 	)
 
 	BeforeEach(func() {
-		chk = check.NewDashedName(check.Context{}, "")
+		chk = check.NewDashedName(check.Context{}, "", check.CheckConfig{})
 	})
 
 	Describe("Check", func() {
@@ -44,7 +44,7 @@ var _ = Describe("DashedName", func() {
 			ex := ex
 
 			It(fmt.Sprintf("returns suggestion if name is '%s'", ex.Name), func() {
-				chk = check.NewDashedName(check.Context{}, ex.Name)
+				chk = check.NewDashedName(check.Context{}, ex.Name, check.CheckConfig{})
 
 				sugs, err := chk.Check()
 				Expect(err).ToNot(HaveOccurred())

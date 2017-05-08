@@ -11,10 +11,11 @@ import (
 type JobPropertyDeprecated struct {
 	context check.Context
 	def     boshjob.PropertyDefinition
+	check.CheckConfig
 }
 
-func NewJobPropertyDeprecated(context check.Context, def boshjob.PropertyDefinition) JobPropertyDeprecated {
-	return JobPropertyDeprecated{context, def}
+func NewJobPropertyDeprecated(context check.Context, def boshjob.PropertyDefinition, config check.CheckConfig) JobPropertyDeprecated {
+	return JobPropertyDeprecated{context, def, config}
 }
 
 func (c JobPropertyDeprecated) Description() check.Description {

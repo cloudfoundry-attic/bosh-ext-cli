@@ -7,10 +7,11 @@ import (
 type IGAZs struct {
 	context check.Context
 	azs     *[]string
+	check.CheckConfig
 }
 
-func NewIGAZs(context check.Context, azs *[]string) IGAZs {
-	return IGAZs{context, azs}
+func NewIGAZs(context check.Context, azs *[]string, config check.CheckConfig) IGAZs {
+	return IGAZs{context, azs, config}
 }
 
 func (c IGAZs) Description() check.Description {

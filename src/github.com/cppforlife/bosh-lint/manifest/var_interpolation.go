@@ -11,10 +11,11 @@ import (
 type VarInterpolation struct {
 	context check.Context
 	bytes   []byte
+	check.CheckConfig
 }
 
-func NewVarInterpolation(context check.Context, bytes []byte) VarInterpolation {
-	return VarInterpolation{context, bytes}
+func NewVarInterpolation(context check.Context, bytes []byte, config check.CheckConfig) VarInterpolation {
+	return VarInterpolation{context, bytes, config}
 }
 
 func (c VarInterpolation) Description() check.Description {

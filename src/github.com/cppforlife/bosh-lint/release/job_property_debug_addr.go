@@ -8,14 +8,26 @@ import (
 	check "github.com/cppforlife/bosh-lint/check"
 )
 
+type JobPropertyDebugAddrConfig struct {
+	DebugPatterns []string `yaml:"debug_patterns"`
+	Whitelist     []string `yaml:"whitelist"`
+	check.CheckConfig
+}
+
+var DefaultJobPropertyDebugAddrConfig = JobPropertyDebugAddrConfig{
+	DebugPatterns: []string{"debug"},
+	Whitelist:     []string{},
+}
+
 type JobPropertyDebugAddr struct {
 	context check.Context
 	name    string
 	def     boshjob.PropertyDefinition
+	JobPropertyDebugAddrConfig
 }
 
-func NewJobPropertyDebugAddr(context check.Context, name string, def boshjob.PropertyDefinition) JobPropertyDebugAddr {
-	return JobPropertyDebugAddr{context, name, def}
+func NewJobPropertyDebugAddr(context check.Context, name string, def boshjob.PropertyDefinition, config JobPropertyDebugAddrConfig) JobPropertyDebugAddr {
+	return JobPropertyDebugAddr{context, name, def, config}
 }
 
 func (c JobPropertyDebugAddr) Description() check.Description {
@@ -32,17 +44,27 @@ func (c JobPropertyDebugAddr) Check() ([]check.Suggestion, error) {
 		return nil, nil
 	}
 
+	for _, piece := range c.Whitelist {
+		if strings.Contains(c.def.Description, piece) {
+			return nil, nil
+		}
+	}
+
 	defaultStr, ok := c.def.Default.(string)
 	if !ok {
 		return nil, nil
 	}
 
-	if strings.Contains(c.name, "debug") && strings.Contains(defaultStr, "0.0.0.0") {
-		sugs = append(sugs, check.Simple{
-			Context_:    c.context,
-			Problem_:    "Property holding debug address should not use '0.0.0.0'",
-			Resolution_: "Update default to use '127.0.0.1'",
-		})
+	if strings.Contains(defaultStr, "0.0.0.0") {
+		for _, piece := range c.DebugPatterns {
+			if strings.Contains(c.name, piece) {
+				sugs = append(sugs, check.Simple{
+					Context_:    c.context,
+					Problem_:    "Property holding debug address should not use '0.0.0.0'",
+					Resolution_: "Update default to use '127.0.0.1'",
+				})
+			}
+		}
 	}
 
 	return sugs, nil

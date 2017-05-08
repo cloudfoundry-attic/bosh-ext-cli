@@ -12,10 +12,11 @@ import (
 type JobPropertiesCertificate struct {
 	context check.Context
 	job     *boshjob.Job
+	check.CheckConfig
 }
 
-func NewJobPropertiesCertificate(context check.Context, job *boshjob.Job) JobPropertiesCertificate {
-	return JobPropertiesCertificate{context, job}
+func NewJobPropertiesCertificate(context check.Context, job *boshjob.Job, config check.CheckConfig) JobPropertiesCertificate {
+	return JobPropertiesCertificate{context, job, config}
 }
 
 func (c JobPropertiesCertificate) Description() check.Description {
