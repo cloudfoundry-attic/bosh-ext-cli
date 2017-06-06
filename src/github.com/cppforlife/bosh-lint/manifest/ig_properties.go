@@ -7,10 +7,10 @@ import (
 type IGProperties struct {
 	context check.Context
 	props   interface{}
-	check.CheckConfig
+	check.Config
 }
 
-func NewIGProperties(context check.Context, props interface{}, config check.CheckConfig) IGProperties {
+func NewIGProperties(context check.Context, props interface{}, config check.Config) IGProperties {
 	return IGProperties{context, props, config}
 }
 

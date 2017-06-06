@@ -16,7 +16,7 @@ var _ = Describe("ReleaseName", func() {
 	)
 
 	BeforeEach(func() {
-		chk = NewReleaseName(check.Context{}, "", check.CheckConfig{})
+		chk = NewReleaseName(check.Context{}, "", check.Config{})
 	})
 
 	Describe("Check", func() {
@@ -47,7 +47,7 @@ var _ = Describe("ReleaseName", func() {
 			ex := ex
 
 			It(fmt.Sprintf("returns suggestion if name is '%s'", ex.Name), func() {
-				chk = NewReleaseName(check.Context{}, ex.Name, check.CheckConfig{})
+				chk = NewReleaseName(check.Context{}, ex.Name, check.Config{})
 
 				sugs, err := chk.Check()
 				Expect(err).ToNot(HaveOccurred())

@@ -7,10 +7,10 @@ import (
 type TopLevelNetworks struct {
 	context  check.Context
 	networks []Network
-	check.CheckConfig
+	check.Config
 }
 
-func NewTopLevelNetworks(context check.Context, networks []Network, config check.CheckConfig) TopLevelNetworks {
+func NewTopLevelNetworks(context check.Context, networks []Network, config check.Config) TopLevelNetworks {
 	return TopLevelNetworks{context, networks, config}
 }
 

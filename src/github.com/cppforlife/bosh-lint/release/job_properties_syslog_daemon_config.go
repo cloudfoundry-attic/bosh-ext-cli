@@ -11,10 +11,10 @@ import (
 type JobPropertiesSyslogDaemonConfig struct {
 	context check.Context
 	job     *boshjob.Job
-	check.CheckConfig
+	check.Config
 }
 
-func NewJobPropertiesSyslogDaemonConfig(context check.Context, job *boshjob.Job, config check.CheckConfig) JobPropertiesSyslogDaemonConfig {
+func NewJobPropertiesSyslogDaemonConfig(context check.Context, job *boshjob.Job, config check.Config) JobPropertiesSyslogDaemonConfig {
 	return JobPropertiesSyslogDaemonConfig{context, job, config}
 }
 

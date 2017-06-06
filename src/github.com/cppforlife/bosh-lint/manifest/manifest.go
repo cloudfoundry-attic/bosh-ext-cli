@@ -9,28 +9,13 @@ import (
 	check "github.com/cppforlife/bosh-lint/check"
 )
 
-type ManifestConfig struct {
-	DashedName       check.CheckConfig `yaml:"dashed_name"`
-	RootProperties   check.CheckConfig `yaml:"root_properties"`
-	TopLevelJobs     check.CheckConfig `yaml:"top_level_jobs"`
-	TopLevelNetworks check.CheckConfig `yaml:"top_level_networks"`
-	YAMLAnchors      check.CheckConfig `yaml:"yaml_anchors"`
-	VarInterpolation check.CheckConfig `yaml:"var_interpolation"`
-
-	IGAZs        check.CheckConfig `yaml:"ig_azs"`
-	IGProperties check.CheckConfig `yaml:"ig_properties"`
-	StaticIPs    check.CheckConfig `yaml:"static_ips"`
-}
-
-var DefaultManifestConfig = ManifestConfig{}
-
 type LintableManifest struct {
 	bytes    []byte
 	manifest Manifest
-	config   ManifestConfig
+	config   Config
 }
 
-func NewLintableManifest(bytes []byte, config ManifestConfig) (LintableManifest, error) {
+func NewLintableManifest(bytes []byte, config Config) (LintableManifest, error) {
 	var manifest Manifest
 
 	err := yaml.Unmarshal(bytes, &manifest)

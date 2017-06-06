@@ -9,10 +9,10 @@ import (
 type MissingJobs struct {
 	context check.Context
 	release boshrel.Release
-	check.CheckConfig
+	check.Config
 }
 
-func NewMissingJobs(context check.Context, release boshrel.Release, config check.CheckConfig) MissingJobs {
+func NewMissingJobs(context check.Context, release boshrel.Release, config check.Config) MissingJobs {
 	return MissingJobs{context, release, config}
 }
 

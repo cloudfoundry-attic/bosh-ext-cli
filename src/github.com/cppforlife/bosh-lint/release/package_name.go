@@ -14,10 +14,10 @@ var (
 type PackageName struct {
 	context check.Context
 	name    string
-	check.CheckConfig
+	check.Config
 }
 
-func NewPackageName(context check.Context, name string, config check.CheckConfig) PackageName {
+func NewPackageName(context check.Context, name string, config check.Config) PackageName {
 	return PackageName{context, name, config}
 }
 

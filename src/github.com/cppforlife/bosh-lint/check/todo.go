@@ -7,10 +7,10 @@ import (
 type Todo struct {
 	context Context
 	content string
-	CheckConfig
+	Config
 }
 
-func NewTodo(context Context, content string, config CheckConfig) Todo {
+func NewTodo(context Context, content string, config Config) Todo {
 	return Todo{context, content, config}
 }
 

@@ -1,9 +1,9 @@
 package check
 
-type CheckConfig struct {
+type Config struct {
 	Disable bool `yaml:"disable"`
 }
 
-func (pc CheckConfig) IsEnabled() bool {
-	return !pc.Disable
+func (c Config) IsEnabled() bool {
+	return !c.Disable
 }

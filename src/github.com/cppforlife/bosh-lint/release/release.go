@@ -9,38 +9,12 @@ import (
 	check "github.com/cppforlife/bosh-lint/check"
 )
 
-type ReleaseConfig struct {
-	ReleaseName    check.CheckConfig `yaml:"release_name"`
-	MissingLicense check.CheckConfig `yaml:"missing_license"`
-	MissingJobs    check.CheckConfig `yaml:"missing_jobs"`
-	UnusedPackages check.CheckConfig `yaml:"unused_packages"`
-	PackageName    check.CheckConfig `yaml:"package_name"`
-
-	DashedName                      check.CheckConfig `yaml:"dashed_name"`
-	JobPropertiesSyslogDaemonConfig check.CheckConfig `yaml:"job_properties_syslog_daemon_config"`
-	JobPropertiesCertificate        check.CheckConfig `yaml:"job_properties_certificate"`
-	JobTemplatesCtl                 check.CheckConfig `yaml:"job_templates_ctl"`
-
-	JobProperty           check.CheckConfig          `yaml:"job_property"`
-	JobPropertySecret     JobPropertySecretConfig    `yaml:"job_property_secret"`
-	JobPropertySkipSSL    check.CheckConfig          `yaml:"job_property_skip_ssl"`
-	JobPropertyDeprecated check.CheckConfig          `yaml:"job_property_deprecated"`
-	JobPropertyNamespace  check.CheckConfig          `yaml:"job_property_namespace"`
-	JobPropertyDebugAddr  JobPropertyDebugAddrConfig `yaml:"job_property_debug_addr"`
-	Todo                  check.CheckConfig          `yaml:"todo"`
-}
-
-var DefaultReleaseConfig = ReleaseConfig{
-	JobPropertySecret:    DefaultJobPropertySecretConfig,
-	JobPropertyDebugAddr: DefaultJobPropertyDebugAddrConfig,
-}
-
 type LintableRelease struct {
 	release boshrel.Release
-	config  ReleaseConfig
+	config  Config
 }
 
-func NewLintableRelease(release boshrel.Release, config ReleaseConfig) LintableRelease {
+func NewLintableRelease(release boshrel.Release, config Config) LintableRelease {
 	return LintableRelease{release, config}
 }
 

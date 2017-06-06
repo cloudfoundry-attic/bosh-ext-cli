@@ -12,10 +12,10 @@ import (
 type JobTemplatesCtl struct {
 	context check.Context
 	job     *boshjob.Job
-	check.CheckConfig
+	check.Config
 }
 
-func NewJobTemplatesCtl(context check.Context, job *boshjob.Job, config check.CheckConfig) JobTemplatesCtl {
+func NewJobTemplatesCtl(context check.Context, job *boshjob.Job, config check.Config) JobTemplatesCtl {
 	return JobTemplatesCtl{context, job, config}
 }
 

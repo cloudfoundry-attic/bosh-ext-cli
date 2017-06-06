@@ -15,10 +15,10 @@ var (
 type ReleaseName struct {
 	context check.Context
 	name    string
-	check.CheckConfig
+	check.Config
 }
 
-func NewReleaseName(context check.Context, name string, config check.CheckConfig) ReleaseName {
+func NewReleaseName(context check.Context, name string, config check.Config) ReleaseName {
 	return ReleaseName{context, name, config}
 }
 

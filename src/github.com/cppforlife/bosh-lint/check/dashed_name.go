@@ -12,10 +12,10 @@ var (
 type DashedName struct {
 	context Context
 	name    string
-	CheckConfig
+	Config
 }
 
-func NewDashedName(context Context, name string, config CheckConfig) DashedName {
+func NewDashedName(context Context, name string, config Config) DashedName {
 	return DashedName{context, name, config}
 }
 

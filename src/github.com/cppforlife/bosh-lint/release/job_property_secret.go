@@ -8,17 +8,6 @@ import (
 	check "github.com/cppforlife/bosh-lint/check"
 )
 
-type JobPropertySecretConfig struct {
-	SecretPatterns []string `yaml:"secret_patterns"`
-	Whitelist      []string `yaml:"whitelist"`
-	check.CheckConfig
-}
-
-var DefaultJobPropertySecretConfig = JobPropertySecretConfig{
-	SecretPatterns: []string{"secret", "password", "token", "passphrase", "key"},
-	Whitelist:      []string{},
-}
-
 type JobPropertySecret struct {
 	context check.Context
 	name    string

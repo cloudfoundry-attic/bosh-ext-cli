@@ -5,8 +5,6 @@ import (
 	bosherr "github.com/cloudfoundry/bosh-utils/errors"
 
 	lintman "github.com/cppforlife/bosh-lint/manifest"
-
-	"gopkg.in/yaml.v2"
 )
 
 type LintManifestCmd struct {
@@ -18,8 +16,8 @@ func NewLintManifestCmd(ui boshui.UI) LintManifestCmd {
 }
 
 func (c LintManifestCmd) Run(opts LintManifestOpts) error {
-	config := lintman.DefaultManifestConfig
-	if err := yaml.Unmarshal(opts.Config.Bytes, &config); err != nil {
+	config, err := lintman.NewConfig(opts.Config.Bytes)
+	if err != nil {
 		return err
 	}
 

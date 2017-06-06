@@ -8,17 +8,6 @@ import (
 	check "github.com/cppforlife/bosh-lint/check"
 )
 
-type JobPropertyDebugAddrConfig struct {
-	DebugPatterns []string `yaml:"debug_patterns"`
-	Whitelist     []string `yaml:"whitelist"`
-	check.CheckConfig
-}
-
-var DefaultJobPropertyDebugAddrConfig = JobPropertyDebugAddrConfig{
-	DebugPatterns: []string{"debug"},
-	Whitelist:     []string{},
-}
-
 type JobPropertyDebugAddr struct {
 	context check.Context
 	name    string

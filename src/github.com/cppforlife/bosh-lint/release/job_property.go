@@ -16,10 +16,10 @@ type JobProperty struct {
 	context check.Context
 	name    string
 	def     boshjob.PropertyDefinition
-	check.CheckConfig
+	check.Config
 }
 
-func NewJobProperty(context check.Context, name string, def boshjob.PropertyDefinition, config check.CheckConfig) JobProperty {
+func NewJobProperty(context check.Context, name string, def boshjob.PropertyDefinition, config check.Config) JobProperty {
 	return JobProperty{context, name, def, config}
 }
 

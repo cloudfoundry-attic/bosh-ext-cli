@@ -7,10 +7,10 @@ import (
 type RootProperties struct {
 	context check.Context
 	props   interface{}
-	check.CheckConfig
+	check.Config
 }
 
-func NewRootProperties(context check.Context, props interface{}, config check.CheckConfig) RootProperties {
+func NewRootProperties(context check.Context, props interface{}, config check.Config) RootProperties {
 	return RootProperties{context, props, config}
 }
 

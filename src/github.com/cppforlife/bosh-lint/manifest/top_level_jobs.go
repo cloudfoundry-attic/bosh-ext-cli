@@ -7,10 +7,10 @@ import (
 type TopLevelJobs struct {
 	context check.Context
 	jobs    []Job
-	check.CheckConfig
+	check.Config
 }
 
-func NewTopLevelJobs(context check.Context, jobs []Job, config check.CheckConfig) TopLevelJobs {
+func NewTopLevelJobs(context check.Context, jobs []Job, config check.Config) TopLevelJobs {
 	return TopLevelJobs{context, jobs, config}
 }
 
