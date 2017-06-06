@@ -10,13 +10,13 @@ import (
 	. "github.com/cppforlife/bosh-lint/release"
 )
 
-var _ = Describe("ReleaseName", func() {
+var _ = Describe("ReleaseNameSuffix", func() {
 	var (
-		chk ReleaseName
+		chk ReleaseNameSuffix
 	)
 
 	BeforeEach(func() {
-		chk = NewReleaseName(check.Context{}, "", check.Config{})
+		chk = NewReleaseNameSuffix(check.Context{}, "", check.Config{})
 	})
 
 	Describe("Check", func() {
@@ -27,11 +27,6 @@ var _ = Describe("ReleaseName", func() {
 
 		examples := []Example{
 			// Problematic
-			{Name: "", ProblemPiece: "Name does not match suggested regexp"},
-			{Name: "name-", ProblemPiece: "Name does not match suggested regexp"},
-			{Name: "name_", ProblemPiece: "Name does not match suggested regexp"},
-			{Name: "name_name", ProblemPiece: "Name does not match suggested regexp"},
-			{Name: "name.name", ProblemPiece: "Name does not match suggested regexp"},
 			{Name: "namerelease", ProblemPiece: "Name redundantly ends with 'release'"},
 			{Name: "nameboshrelease", ProblemPiece: "Name redundantly ends with 'boshrelease'"},
 			{Name: "namebosh-release", ProblemPiece: "Name redundantly ends with 'bosh-release'"},
@@ -47,7 +42,7 @@ var _ = Describe("ReleaseName", func() {
 			ex := ex
 
 			It(fmt.Sprintf("returns suggestion if name is '%s'", ex.Name), func() {
-				chk = NewReleaseName(check.Context{}, ex.Name, check.Config{})
+				chk = NewReleaseNameSuffix(check.Context{}, ex.Name, check.Config{})
 
 				sugs, err := chk.Check()
 				Expect(err).ToNot(HaveOccurred())

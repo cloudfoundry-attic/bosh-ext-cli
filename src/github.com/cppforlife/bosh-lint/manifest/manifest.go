@@ -63,10 +63,10 @@ func (m LintableManifest) collectChecks() []check.Check {
 	checks = append(checks, NewYAMLAnchors(ctx, m.bytes, m.config.YAMLAnchors))
 	checks = append(checks, NewVarInterpolation(ctx, m.bytes, m.config.VarInterpolation))
 
-	for _, var_ := range m.manifest.Stemcells {
-		ctx := ctx.Nested(fmt.Sprintf("Stemcell '%s'", var_.Alias))
+	for _, stem := range m.manifest.Stemcells {
+		ctx := ctx.Nested(fmt.Sprintf("Stemcell '%s'", stem.Alias))
 
-		checks = append(checks, check.NewDashedName(ctx, var_.Alias, m.config.StemcellAlias))
+		checks = append(checks, check.NewDashedName(ctx, stem.Alias, m.config.StemcellAlias))
 	}
 
 	for _, ig := range m.manifest.InstanceGroups {

@@ -48,7 +48,8 @@ func (r LintableRelease) collectChecks() []check.Check {
 
 	ctx := check.NewRootContext("Release")
 
-	checks = append(checks, NewReleaseName(ctx, r.release.Name(), r.config.ReleaseName))
+	checks = append(checks, check.NewDashedName(ctx, r.release.Name(), r.config.ReleaseName))
+	checks = append(checks, NewReleaseNameSuffix(ctx, r.release.Name(), r.config.ReleaseNameSuffix))
 	checks = append(checks, NewMissingLicense(ctx, r.release.License(), r.config.MissingLicense))
 	checks = append(checks, NewMissingJobs(ctx, r.release, r.config.MissingJobs))
 	checks = append(checks, NewUnusedPackages(ctx, r.release, r.config.UnusedPackages))
@@ -77,7 +78,7 @@ func (r LintableRelease) collectChecks() []check.Check {
 	for _, pkg := range r.release.Packages() {
 		ctx := ctx.Nested(fmt.Sprintf("Package '%s'", pkg.Name()))
 
-		checks = append(checks, NewPackageName(ctx, pkg.Name(), r.config.PackageName))
+		checks = append(checks, check.NewDashedName(ctx, pkg.Name(), r.config.PackageName))
 	}
 
 	return checks

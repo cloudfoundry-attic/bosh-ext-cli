@@ -8,10 +8,11 @@ import (
 )
 
 type Config struct {
-	ReleaseName    check.Config `yaml:"release_name"`
-	MissingLicense check.Config `yaml:"missing_license"`
-	MissingJobs    check.Config `yaml:"missing_jobs"`
-	UnusedPackages check.Config `yaml:"unused_packages"`
+	ReleaseName       check.Config `yaml:"release_name"`
+	ReleaseNameSuffix check.Config `yaml:"release_name_suffix"`
+	MissingLicense    check.Config `yaml:"missing_license"`
+	MissingJobs       check.Config `yaml:"missing_jobs"`
+	UnusedPackages    check.Config `yaml:"unused_packages"`
 
 	JobName                         check.Config `yaml:"job_name"`
 	JobPropertiesSyslogDaemonConfig check.Config `yaml:"job_properties_syslog_daemon_config"`
