@@ -56,7 +56,7 @@ func (m LintableManifest) collectChecks() []check.Check {
 
 	ctx := check.NewRootContext("Manifest")
 
-	checks = append(checks, check.NewDashedName(ctx, m.manifest.Name, m.config.DashedName))
+	checks = append(checks, check.NewDashedName(ctx, m.manifest.Name, m.config.ManifestName))
 	checks = append(checks, NewRootProperties(ctx, m.manifest.Properties, m.config.RootProperties))
 	checks = append(checks, NewTopLevelJobs(ctx, m.manifest.Jobs, m.config.TopLevelJobs))
 	checks = append(checks, NewTopLevelNetworks(ctx, m.manifest.Networks, m.config.TopLevelNetworks))
@@ -66,13 +66,13 @@ func (m LintableManifest) collectChecks() []check.Check {
 	for _, var_ := range m.manifest.Stemcells {
 		ctx := ctx.Nested(fmt.Sprintf("Stemcell '%s'", var_.Alias))
 
-		checks = append(checks, check.NewDashedName(ctx, var_.Alias, m.config.DashedName))
+		checks = append(checks, check.NewDashedName(ctx, var_.Alias, m.config.StemcellAlias))
 	}
 
 	for _, ig := range m.manifest.InstanceGroups {
 		ctx := ctx.Nested(fmt.Sprintf("Instance group '%s'", ig.Name))
 
-		checks = append(checks, check.NewDashedName(ctx, ig.Name, m.config.DashedName))
+		checks = append(checks, check.NewDashedName(ctx, ig.Name, m.config.IGName))
 		checks = append(checks, NewIGAZs(ctx, ig.AZs, m.config.IGAZs))
 		checks = append(checks, NewIGProperties(ctx, ig.Properties, m.config.IGProperties))
 		checks = append(checks, NewStaticIPs(ctx, ig.Networks, m.config.StaticIPs))
@@ -81,7 +81,7 @@ func (m LintableManifest) collectChecks() []check.Check {
 	for _, var_ := range m.manifest.Variables {
 		ctx := ctx.Nested(fmt.Sprintf("Variable '%s'", var_.Name))
 
-		checks = append(checks, check.NewDashedName(ctx, var_.Name, m.config.DashedName))
+		checks = append(checks, check.NewDashedName(ctx, var_.Name, m.config.VariableName))
 	}
 
 	return checks

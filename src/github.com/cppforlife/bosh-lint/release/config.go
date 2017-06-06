@@ -12,9 +12,8 @@ type Config struct {
 	MissingLicense check.Config `yaml:"missing_license"`
 	MissingJobs    check.Config `yaml:"missing_jobs"`
 	UnusedPackages check.Config `yaml:"unused_packages"`
-	PackageName    check.Config `yaml:"package_name"`
 
-	DashedName                      check.Config `yaml:"dashed_name"`
+	JobName                         check.Config `yaml:"job_name"`
 	JobPropertiesSyslogDaemonConfig check.Config `yaml:"job_properties_syslog_daemon_config"`
 	JobPropertiesCertificate        check.Config `yaml:"job_properties_certificate"`
 	JobTemplatesCtl                 check.Config `yaml:"job_templates_ctl"`
@@ -25,7 +24,10 @@ type Config struct {
 	JobPropertyDeprecated check.Config               `yaml:"job_property_deprecated"`
 	JobPropertyNamespace  check.Config               `yaml:"job_property_namespace"`
 	JobPropertyDebugAddr  JobPropertyDebugAddrConfig `yaml:"job_property_debug_addr"`
-	Todo                  check.Config               `yaml:"todo"`
+
+	PackageName check.Config `yaml:"package_name"`
+
+	Todo check.Config `yaml:"todo"`
 }
 
 type JobPropertyDebugAddrConfig struct {

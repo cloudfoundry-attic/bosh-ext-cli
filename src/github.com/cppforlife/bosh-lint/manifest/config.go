@@ -8,16 +8,22 @@ import (
 )
 
 type Config struct {
-	DashedName       check.Config `yaml:"dashed_name"`
+	ManifestName check.Config `yaml:"manifest_name"`
+
 	RootProperties   check.Config `yaml:"root_properties"`
 	TopLevelJobs     check.Config `yaml:"top_level_jobs"`
 	TopLevelNetworks check.Config `yaml:"top_level_networks"`
 	YAMLAnchors      check.Config `yaml:"yaml_anchors"`
 	VarInterpolation check.Config `yaml:"var_interpolation"`
 
-	IGAZs        check.Config `yaml:"ig_azs"`
-	IGProperties check.Config `yaml:"ig_properties"`
+	StemcellAlias check.Config `yaml:"stemcell_alias"`
+
+	IGName       check.Config `yaml:"instance_group_name"`
+	IGAZs        check.Config `yaml:"instance_group_azs"`
+	IGProperties check.Config `yaml:"instance_group_properties"`
 	StaticIPs    check.Config `yaml:"static_ips"`
+
+	VariableName check.Config `yaml:"variable_name"`
 }
 
 func NewConfig(bytes []byte) (Config, error) {
