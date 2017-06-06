@@ -6,9 +6,14 @@ bosh-lint is a tool that gives suggestions for BOSH releases and other assets.
 
 ```
 $ source .envrc
-$ ginkgo -r src/github.com/cppforlife/bosh-lint/
 $ bin/build
 $ out/bosh-lint lint-release --dir ~/workspace/whatever-release
+```
+
+Run tests:
+
+```
+$ bin/test
 ```
 
 ## Todo
