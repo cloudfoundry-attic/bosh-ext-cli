@@ -13,10 +13,11 @@ type JobPropertyNamespace struct {
 	context check.Context
 	name    string
 	job     *boshjob.Job
+	check.CheckConfig
 }
 
-func NewJobPropertyNamespace(context check.Context, name string, job *boshjob.Job) JobPropertyNamespace {
-	return JobPropertyNamespace{context, name, job}
+func NewJobPropertyNamespace(context check.Context, name string, job *boshjob.Job, config check.CheckConfig) JobPropertyNamespace {
+	return JobPropertyNamespace{context, name, job, config}
 }
 
 func (c JobPropertyNamespace) Description() check.Description {

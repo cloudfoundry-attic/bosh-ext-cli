@@ -26,8 +26,9 @@ type HelpOpts struct {
 }
 
 type LintReleaseOpts struct {
-	Directory boshcmd.DirOrCWDArg `long:"dir" description:"Release directory path if not current working directory" default:"."`
-	Verbose   int                 `long:"verbose" value-name:"LEVEL" description:"Show all checks [0,1,2]"`
+	Directory boshcmd.DirOrCWDArg  `long:"dir" description:"Release directory path if not current working directory" default:"."`
+	Verbose   int                  `long:"verbose" value-name:"LEVEL" description:"Show all checks [0,1,2]"`
+	Config    boshcmd.FileBytesArg `long:"config" short:"c" description:"Path to config file"`
 	cmd
 }
 
@@ -50,8 +51,9 @@ type LintRuntimeConfigOpts struct {
 }
 
 type LintManifestOpts struct {
-	Args    FileArgs `positional-args:"true" required:"true"`
-	Verbose int      `long:"verbose" value-name:"LEVEL" description:"Show more details [0,1,2]"`
+	Args    FileArgs             `positional-args:"true" required:"true"`
+	Verbose int                  `long:"verbose" value-name:"LEVEL" description:"Show more details [0,1,2]"`
+	Config  boshcmd.FileBytesArg `long:"config" short:"c" description:"Path to config file"`
 	cmd
 }
 

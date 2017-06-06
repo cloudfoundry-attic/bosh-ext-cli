@@ -9,6 +9,8 @@ import (
 	boshsys "github.com/cloudfoundry/bosh-utils/system"
 
 	lintrel "github.com/cppforlife/bosh-lint/release"
+
+	"gopkg.in/yaml.v2"
 )
 
 type LintReleaseCmd struct {
@@ -32,12 +34,17 @@ func NewLintReleaseCmd(
 }
 
 func (c LintReleaseCmd) Run(opts LintReleaseOpts) error {
+	config := lintrel.DefaultReleaseConfig
+	if err := yaml.Unmarshal(opts.Config.Bytes, &config); err != nil {
+		return err
+	}
+
 	release, err := c.release(opts)
 	if err != nil {
 		return err
 	}
 
-	lintableRelease := lintrel.NewLintableRelease(release)
+	lintableRelease := lintrel.NewLintableRelease(release, config)
 
 	descriptions, suggestions, err := lintableRelease.Lint()
 	if err != nil {

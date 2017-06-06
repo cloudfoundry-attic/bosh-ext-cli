@@ -7,10 +7,11 @@ import (
 type TopLevelJobs struct {
 	context check.Context
 	jobs    []Job
+	check.CheckConfig
 }
 
-func NewTopLevelJobs(context check.Context, jobs []Job) TopLevelJobs {
-	return TopLevelJobs{context, jobs}
+func NewTopLevelJobs(context check.Context, jobs []Job, config check.CheckConfig) TopLevelJobs {
+	return TopLevelJobs{context, jobs, config}
 }
 
 func (c TopLevelJobs) Description() check.Description {

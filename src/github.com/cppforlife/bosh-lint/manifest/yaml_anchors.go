@@ -15,10 +15,11 @@ var (
 type YAMLAnchors struct {
 	context  check.Context
 	contents string
+	check.CheckConfig
 }
 
-func NewYAMLAnchors(context check.Context, bytes []byte) YAMLAnchors {
-	return YAMLAnchors{context, string(bytes)}
+func NewYAMLAnchors(context check.Context, bytes []byte, config check.CheckConfig) YAMLAnchors {
+	return YAMLAnchors{context, string(bytes), config}
 }
 
 func (c YAMLAnchors) Description() check.Description {

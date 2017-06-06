@@ -9,10 +9,11 @@ import (
 type MissingLicense struct {
 	context check.Context
 	license *boshlic.License
+	check.CheckConfig
 }
 
-func NewMissingLicense(context check.Context, license *boshlic.License) MissingLicense {
-	return MissingLicense{context, license}
+func NewMissingLicense(context check.Context, license *boshlic.License, config check.CheckConfig) MissingLicense {
+	return MissingLicense{context, license, config}
 }
 
 func (c MissingLicense) Description() check.Description {

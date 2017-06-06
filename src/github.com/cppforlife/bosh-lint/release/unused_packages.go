@@ -11,10 +11,11 @@ import (
 type UnusedPackages struct {
 	context check.Context
 	release boshrel.Release
+	check.CheckConfig
 }
 
-func NewUnusedPackages(context check.Context, release boshrel.Release) UnusedPackages {
-	return UnusedPackages{context, release}
+func NewUnusedPackages(context check.Context, release boshrel.Release, config check.CheckConfig) UnusedPackages {
+	return UnusedPackages{context, release, config}
 }
 
 func (c UnusedPackages) Description() check.Description {

@@ -7,10 +7,11 @@ import (
 type Todo struct {
 	context Context
 	content string
+	CheckConfig
 }
 
-func NewTodo(context Context, content string) Todo {
-	return Todo{context, content}
+func NewTodo(context Context, content string, config CheckConfig) Todo {
+	return Todo{context, content, config}
 }
 
 func (c Todo) Description() Description {

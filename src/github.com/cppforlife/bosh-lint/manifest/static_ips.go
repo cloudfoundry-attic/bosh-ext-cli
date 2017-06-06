@@ -9,10 +9,11 @@ import (
 type StaticIPs struct {
 	context   check.Context
 	netAssocs []NetworkAssociation
+	check.CheckConfig
 }
 
-func NewStaticIPs(context check.Context, netAssocs []NetworkAssociation) StaticIPs {
-	return StaticIPs{context, netAssocs}
+func NewStaticIPs(context check.Context, netAssocs []NetworkAssociation, config check.CheckConfig) StaticIPs {
+	return StaticIPs{context, netAssocs, config}
 }
 
 func (c StaticIPs) Description() check.Description {
