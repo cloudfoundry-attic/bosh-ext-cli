@@ -13,11 +13,11 @@ type BoshOpts struct {
 
 	Help HelpOpts `command:"help" description:"Show this help message"`
 
-	LintRelease       LintReleaseOpts       `command:"lint-release"  alias:"r" alias:"release" description:"Lint release"`
-	LintCPIConfig     LintCPIConfigOpts     `command:"lint-cpi-config"     hidden:"true" alias:"cpi" alias:"cpi-config" description:"Lint CPI config"`
-	LintRuntimeConfig LintRuntimeConfigOpts `command:"lint-runtime-config" hidden:"true" alias:"rc" alias:"runtime-config" description:"Lint runtime config"`
-	LintCloudConfig   LintCloudConfigOpts   `command:"lint-cloud-config"   hidden:"true" alias:"cc" alias:"cloud-config" aliasdescription:"Lint cloud config"`
-	LintManifest      LintManifestOpts      `command:"lint-manifest"                     alias:"m" alias:"manifest" description:"Lint deployment manifest"`
+	LintRelease       LintReleaseOpts       `command:"lint-release"        alias:"r"   alias:"release"                      description:"Lint release"`
+	LintCPIConfig     LintCPIConfigOpts     `command:"lint-cpi-config"     alias:"cpi" alias:"cpi-config"     hidden:"true" description:"Lint CPI config"`
+	LintRuntimeConfig LintRuntimeConfigOpts `command:"lint-runtime-config" alias:"rc"  alias:"runtime-config" hidden:"true" description:"Lint runtime config"`
+	LintCloudConfig   LintCloudConfigOpts   `command:"lint-cloud-config"   alias:"cc"  alias:"cloud-config"   hidden:"true" description:"Lint cloud config"`
+	LintManifest      LintManifestOpts      `command:"lint-manifest"       alias:"m"   alias:"manifest"                     description:"Lint deployment manifest"`
 }
 
 type HelpOpts struct {
