@@ -26,6 +26,9 @@ type InstanceGroup struct {
 
 	Properties interface{}
 
+	Consumes interface{}
+	Provides interface{}
+
 	Networks []NetworkAssociation
 }
 

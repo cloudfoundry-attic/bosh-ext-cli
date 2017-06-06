@@ -21,6 +21,7 @@ type Config struct {
 	IGName       check.Config `yaml:"instance_group_name"`
 	IGAZs        check.Config `yaml:"instance_group_azs"`
 	IGProperties check.Config `yaml:"instance_group_properties"`
+	IGLinks      check.Config `yaml:"instance_group_links"`
 	StaticIPs    check.Config `yaml:"static_ips"`
 
 	VariableName check.Config `yaml:"variable_name"`

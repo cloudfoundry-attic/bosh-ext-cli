@@ -75,6 +75,7 @@ func (m LintableManifest) collectChecks() []check.Check {
 		checks = append(checks, check.NewDashedName(ctx, ig.Name, m.config.IGName))
 		checks = append(checks, NewIGAZs(ctx, ig.AZs, m.config.IGAZs))
 		checks = append(checks, NewIGProperties(ctx, ig.Properties, m.config.IGProperties))
+		checks = append(checks, NewIGLinks(ctx, ig.Consumes, ig.Provides, m.config.IGLinks))
 		checks = append(checks, NewStaticIPs(ctx, ig.Networks, m.config.StaticIPs))
 	}
 
