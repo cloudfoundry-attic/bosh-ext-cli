@@ -65,6 +65,9 @@ func (c Cmd) Execute() (cmdErr error) {
 	case *LintManifestOpts:
 		return NewLintManifestCmd(deps.UI).Run(*opts)
 
+	case *DebugTaskOpts:
+		return NewDebugTaskCmd(deps.UI).Run(*opts)
+
 	case *MessageOpts:
 		deps.UI.PrintBlock(opts.Message)
 		return nil

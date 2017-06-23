@@ -18,6 +18,8 @@ type BoshOpts struct {
 	LintRuntimeConfig LintRuntimeConfigOpts `command:"lint-runtime-config" alias:"rc"  alias:"runtime-config" hidden:"true" description:"Lint runtime config"`
 	LintCloudConfig   LintCloudConfigOpts   `command:"lint-cloud-config"   alias:"cc"  alias:"cloud-config"   hidden:"true" description:"Lint cloud config"`
 	LintManifest      LintManifestOpts      `command:"lint-manifest"       alias:"m"   alias:"manifest"                     description:"Lint deployment manifest"`
+
+	DebugTask DebugTaskOpts `command:"debug-task" description:"Interpret task debug log"`
 }
 
 type HelpOpts struct {
@@ -53,6 +55,17 @@ type LintManifestOpts struct {
 	Args    FileArgs             `positional-args:"true" required:"true"`
 	Verbose int                  `long:"verbose" value-name:"LEVEL" description:"Show more details [0,1,2]"`
 	Config  boshcmd.FileBytesArg `long:"config" short:"c" description:"Path to config file"`
+	cmd
+}
+
+type DebugTaskOpts struct {
+	Args FileArgs `positional-args:"true" required:"true"`
+
+	Lines  bool   `long:"lines" short:"l" description:"Show all log lines"`
+	Group  string `long:"group" short:"g" description:"Show group associated log lines"`
+	DB     bool   `long:"db"              description:"Show DB statements log lines"`
+	Errors bool   `long:"errs"            description:"Show error log lines"`
+
 	cmd
 }
 
