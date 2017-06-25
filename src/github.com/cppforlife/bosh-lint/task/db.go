@@ -13,22 +13,24 @@ var (
 type DBStatement struct {
 	Type string
 	Time float64 // todo duration
+
+	idx int
 }
 
 var _ Action = DBStatement{}
 
-func NewDBStatement(str string) *DBStatement {
+func NewDBStatement(str string, lineNum int) *DBStatement {
 	if m := dbStatement.FindStringSubmatch(str); len(m) > 0 {
 		d1, err := strconv.ParseFloat(m[1], 64)
 		if err != nil {
 			return nil // todo
 		}
 
-		return &DBStatement{Type: m[2], Time: d1}
+		return &DBStatement{Type: m[2], Time: d1, idx: lineNum}
 	}
 
 	return nil
 }
 
-func (r DBStatement) Relation() Relation       { return ExactRelation{"db"} }
+func (r DBStatement) Relation() Relation       { return ExactRelation{"[db] " + strconv.Itoa(r.idx)} }
 func (r DBStatement) ShortDescription() string { return "[db]" }

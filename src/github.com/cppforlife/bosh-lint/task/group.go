@@ -1,7 +1,6 @@
 package task
 
 import (
-	"sort"
 	"time"
 )
 
@@ -14,7 +13,11 @@ func (g Group) Actions() []SpanningAction {
 	var actions []*SpanningAction
 
 	for _, line := range g.Lines {
-		actions = append(actions, &SpanningAction{Lines: []*Line{line}})
+		if _, ok := line.Action().(*DBStatement); !ok {
+			action := &SpanningAction{}
+			action.AddLines([]*Line{line})
+			actions = append(actions, action)
+		}
 	}
 
 	for {
@@ -28,8 +31,8 @@ func (g Group) Actions() []SpanningAction {
 				if action2 == nil {
 					continue
 				}
-				if i1 != i2 && action1.isRelated(action2) {
-					actions[i1].Lines = append(actions[i1].Lines, action2.Lines...)
+				if i1 != i2 && action1.IsRelated(action2) {
+					actions[i1].Merge(action2)
 					actions[i2] = nil
 					mergedOnce = true
 				}
@@ -45,7 +48,7 @@ func (g Group) Actions() []SpanningAction {
 
 	for _, action := range actions {
 		if action != nil {
-			sort.Sort(LineTimeSorting(action.Lines))
+			action.SortLinesChrono()
 			actions2 = append(actions2, *action)
 		}
 	}

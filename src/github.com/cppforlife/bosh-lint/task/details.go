@@ -34,6 +34,7 @@ func (d Details) Groups() []Group {
 	groupsByName := map[string][]*Line{}
 
 	for _, line := range d.Lines {
+		// todo group limits nats responses
 		groupsByName[line.Group] = append(groupsByName[line.Group], line)
 	}
 

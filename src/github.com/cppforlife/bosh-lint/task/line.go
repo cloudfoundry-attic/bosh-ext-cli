@@ -5,6 +5,7 @@ import (
 )
 
 type Line struct {
+	Number  int
 	Level   string
 	Time    time.Time
 	Group   string
@@ -14,6 +15,7 @@ type Line struct {
 }
 
 type UnknownLine struct {
+	Number  int
 	Content string
 }
 
@@ -43,7 +45,7 @@ func (l *Line) Action() Action {
 		l.action = a
 	} else if a := NewCPIResponse(l.Content); a != nil {
 		l.action = a
-	} else if a := NewDBStatement(l.Content); a != nil {
+	} else if a := NewDBStatement(l.Content, l.Number); a != nil {
 		l.action = a
 	} else {
 		l.action = UnknownAction{l.TruncatedContent(80)}

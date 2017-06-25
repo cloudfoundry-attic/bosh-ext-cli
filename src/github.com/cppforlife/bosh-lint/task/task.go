@@ -1,7 +1,6 @@
 package task
 
 import (
-	// "fmt"
 	"regexp"
 	"strings"
 	"time"
@@ -27,7 +26,7 @@ func (t *Task) Details() (Details, error) {
 	var details Details
 	var errs []error
 
-	for _, lineStr := range strings.Split(string(t.bytes), "\n") {
+	for lineNum, lineStr := range strings.Split(string(t.bytes), "\n") {
 		if m := genericLine.FindStringSubmatch(lineStr); len(m) > 0 {
 			t1, err := t.parseTime(m[2])
 			if err != nil {
@@ -36,6 +35,7 @@ func (t *Task) Details() (Details, error) {
 			}
 
 			line := &Line{
+				Number:  lineNum,
 				Level:   m[1],
 				Time:    t1,
 				Group:   m[3], // todo empty group?
@@ -64,7 +64,8 @@ func (t *Task) Details() (Details, error) {
 			prevLine.Content += "\n" + lineStr
 			details.Lines[lenLines-1] = prevLine
 		} else {
-			details.UnknownLines = append(details.UnknownLines, UnknownLine{Content: lineStr})
+			line := UnknownLine{Number: lineNum, Content: lineStr}
+			details.UnknownLines = append(details.UnknownLines, line)
 		}
 	}
 
