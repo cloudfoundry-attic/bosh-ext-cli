@@ -2,6 +2,19 @@
 
 bosh-lint is a tool that gives suggestions for BOSH releases and other assets.
 
+## Commands
+
+```
+# Lint release directory and show suggestions
+$ bosh-lint lint-release
+
+# Show detailed Director task debug information
+$ bosh task X --debug | bosh-lint debug-task -
+$ bosh task X --debug | bosh-lint debug-task - -a
+$ bosh task X --debug | bosh-lint debug-task - -a -s duration
+$ bosh task X --debug | bosh-lint debug-task - -l
+```
+
 ## Development
 
 ```
