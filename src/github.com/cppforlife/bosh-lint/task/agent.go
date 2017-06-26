@@ -2,6 +2,7 @@ package task
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 )
 
@@ -27,6 +28,7 @@ func NewAgentRequest(str string) *AgentRequest {
 
 		err := json.Unmarshal([]byte(pieces[2]), &req)
 		if err != nil {
+			panic(fmt.Sprintf("Failed to parse agent request: %s", err))
 			return nil // todo?
 		}
 
@@ -50,7 +52,7 @@ func (r AgentRequest) ShortDescription() string {
 	desc := "[agent req] " + r.Method
 
 	switch r.Method {
-	case "run_script", "mount_disk", "unmount_disk":
+	case "run_script", "sync_dns", "mount_disk", "unmount_disk":
 		desc += " " + r.Arguments[0].(string)
 	}
 
@@ -67,10 +69,12 @@ func (r AgentRequest) agentTaskID() string {
 }
 
 // RECEIVED: director.c9f043e7-d7ee-4ac1-a707-e6b0b4cc8be1.7f254f79-9b41-44ea-bda0-45cc8f88f093 {"value":{"agent_task_id":"3470dce7-9599-4ce9-743d-350d0a3e32ab","state":"running"}}
+// RECEIVED: director.c9f043e7-d7ee-4ac1-a707-e6b0b4cc8be1.d4ad832a-b9df-4500-bd29-f59aba9f6510 {"exception":{"message":"Action Failed get_task: ...
 
 type AgentResponse struct {
-	Value   interface{}
-	ReplyTo string
+	Value     interface{}
+	Exception interface{}
+	ReplyTo   string
 
 	relation Relation
 }
@@ -85,6 +89,7 @@ func NewAgentResponse(str string) *AgentResponse {
 
 		err := json.Unmarshal([]byte(pieces[2]), &resp)
 		if err != nil {
+			panic(fmt.Sprintf("Failed to parse agent response: %s", err))
 			return nil // todo?
 		}
 
@@ -105,7 +110,10 @@ func (r AgentResponse) Relation() Relation {
 }
 
 func (r AgentResponse) ShortDescription() string {
-	return "[agent resp] "
+	if r.Exception != nil {
+		return "[agent resp] error"
+	}
+	return "[agent resp]"
 }
 
 func (r AgentResponse) agentTaskID() string {

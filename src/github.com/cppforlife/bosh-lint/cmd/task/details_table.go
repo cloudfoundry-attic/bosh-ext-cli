@@ -1,8 +1,6 @@
 package task
 
 import (
-	"fmt"
-
 	boshui "github.com/cloudfoundry/bosh-cli/ui"
 	boshtbl "github.com/cloudfoundry/bosh-cli/ui/table"
 
@@ -27,35 +25,6 @@ func (t DetailsTable) Print() {
 		boshtbl.NewValueInt(len(t.Details.Lines)),
 		boshtbl.NewValueInt(len(t.Details.UnknownLines)),
 	})
-
-	t.UI.PrintTable(table)
-}
-
-type GroupsTable struct {
-	Groups []linttask.Group
-	UI     boshui.UI
-}
-
-func (t GroupsTable) Print() {
-	table := boshtbl.Table{
-		Content: "groups",
-
-		Header: []string{"Name", "Started at", "Ended at", "Duration"},
-
-		SortBy: []boshtbl.ColumnSort{
-			{Column: 1, Asc: true},
-			{Column: 0, Asc: true},
-		},
-	}
-
-	for _, group := range t.Groups {
-		table.Rows = append(table.Rows, []boshtbl.Value{
-			boshtbl.NewValueString(group.Name),
-			boshtbl.NewValueTime(group.StartedAt()),
-			boshtbl.NewValueTime(group.EndedAt()),
-			boshtbl.NewValueString(fmt.Sprintf("%s", group.Duration())),
-		})
-	}
 
 	t.UI.PrintTable(table)
 }

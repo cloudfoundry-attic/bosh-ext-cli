@@ -13,7 +13,10 @@ func (g Group) Actions() []SpanningAction {
 	var actions []*SpanningAction
 
 	for _, line := range g.Lines {
-		if _, ok := line.Action().(*DBStatement); !ok {
+		switch line.Action().(type) {
+		case *DBStatement, UnknownAction:
+			// do nothing
+		default:
 			action := &SpanningAction{}
 			action.AddLines([]*Line{line})
 			actions = append(actions, action)

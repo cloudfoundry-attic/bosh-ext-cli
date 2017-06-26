@@ -11,6 +11,15 @@ type SpanningAction struct {
 	uniqueRelations []Relation
 }
 
+func (a SpanningAction) Group() string {
+	for _, line := range a.lines {
+		if len(line.Group) > 0 {
+			return line.Group
+		}
+	}
+	return ""
+}
+
 func (a SpanningAction) StartedAt() time.Time    { return a.lines[0].Time }
 func (a SpanningAction) EndedAt() time.Time      { return a.lines[len(a.lines)-1].Time }
 func (a SpanningAction) Duration() time.Duration { return a.EndedAt().Sub(a.StartedAt()) }

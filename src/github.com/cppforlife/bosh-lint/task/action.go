@@ -1,15 +1,23 @@
 package task
 
+import (
+	"strconv"
+)
+
 type Action interface {
 	Relation() Relation
 	ShortDescription() string
 }
 
 type UnknownAction struct {
+	number      int
 	description string
 }
 
-func (a UnknownAction) Relation() Relation       { return ExactRelation{""} }
+func (a UnknownAction) Relation() Relation {
+	return ExactRelation{"[unknown] " + strconv.Itoa(a.number)}
+}
+
 func (a UnknownAction) ShortDescription() string { return a.description }
 
 type Relation interface {

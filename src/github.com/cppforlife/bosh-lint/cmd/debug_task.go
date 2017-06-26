@@ -23,25 +23,19 @@ func (c DebugTaskCmd) Run(opts DebugTaskOpts) error {
 		return err
 	}
 
-	lintcmdtask.DetailsTable{details, c.ui}.Print()
-	lintcmdtask.GroupsTable{details.Groups(), c.ui}.Print()
-
-	if opts.Lines {
+	switch {
+	case opts.Lines:
 		return c.showLines(details, opts)
+
+	case opts.Actions:
+		lintcmdtask.ActionsTable{details.Group(), opts.SortBy, c.ui}.Print()
+		return nil
+
+	default:
+		lintcmdtask.DetailsTable{details, c.ui}.Print()
+		lintcmdtask.GroupsTable{details.Groups(), opts.SortBy, c.ui}.Print()
+		return nil
 	}
-
-	return c.showActions(details, opts)
-}
-
-func (c DebugTaskCmd) showActions(details linttask.Details, opts DebugTaskOpts) error {
-	group, err := details.FindGroup(opts.Group)
-	if err != nil {
-		return err
-	}
-
-	lintcmdtask.ActionsTable{group, c.ui}.Print()
-
-	return nil
 }
 
 func (c DebugTaskCmd) showLines(details linttask.Details, opts DebugTaskOpts) error {
@@ -49,11 +43,8 @@ func (c DebugTaskCmd) showLines(details linttask.Details, opts DebugTaskOpts) er
 		if opts.Errors && !line.IsError() {
 			return false
 		}
-		if len(opts.Group) > 0 && line.Group != opts.Group {
-			return false
-		}
 		if !opts.DB {
-			if _, ok := line.Action().(linttask.DBStatement); ok {
+			if _, ok := line.Action().(*linttask.DBStatement); ok {
 				return false
 			}
 		}

@@ -48,7 +48,7 @@ func (l *Line) Action() Action {
 	} else if a := NewDBStatement(l.Content, l.Number); a != nil {
 		l.action = a
 	} else {
-		l.action = UnknownAction{l.TruncatedContent(80)}
+		l.action = UnknownAction{l.Number, l.TruncatedContent(80)}
 	}
 
 	return l.action
@@ -56,6 +56,13 @@ func (l *Line) Action() Action {
 
 type LineTimeSorting []*Line
 
-func (ls LineTimeSorting) Len() int           { return len(ls) }
-func (ls LineTimeSorting) Less(i, j int) bool { return ls[i].Time.Before(ls[j].Time) }
-func (ls LineTimeSorting) Swap(i, j int)      { ls[i], ls[j] = ls[j], ls[i] }
+func (ls LineTimeSorting) Len() int { return len(ls) }
+
+func (ls LineTimeSorting) Less(i, j int) bool {
+	if ls[i].Time.Equal(ls[j].Time) {
+		return ls[i].Number < ls[j].Number
+	}
+	return ls[i].Time.Before(ls[j].Time)
+}
+
+func (ls LineTimeSorting) Swap(i, j int) { ls[i], ls[j] = ls[j], ls[i] }

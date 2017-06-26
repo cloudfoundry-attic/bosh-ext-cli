@@ -7,7 +7,7 @@ import (
 
 var (
 	// (0.000414s) UPDATE "vms" SET "instance_id" = 61, "agent_id" = '014d2291-5117-417
-	dbStatement = regexp.MustCompile("^\\(([\\d\\.]+)s\\) (SELECT|UPDATE|COMMIT|BEGIN|INSERT|DELETE|UPDATE)")
+	dbStatement = regexp.MustCompile("^\\(([\\d\\.]+)s\\) (SELECT|UPDATE|COMMIT|BEGIN|INSERT|DELETE|UPDATE|SET\\s)")
 )
 
 type DBStatement struct {

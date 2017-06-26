@@ -61,10 +61,13 @@ type LintManifestOpts struct {
 type DebugTaskOpts struct {
 	Args FileArgs `positional-args:"true" required:"true"`
 
-	Lines  bool   `long:"lines" short:"l" description:"Show all log lines"`
-	Group  string `long:"group" short:"g" description:"Show group associated log lines"`
-	DB     bool   `long:"db"              description:"Show DB statements log lines"`
-	Errors bool   `long:"errs"            description:"Show error log lines"`
+	Actions bool `long:"actions" short:"a" description:"Show all actions"`
+	Lines   bool `long:"lines"   short:"l" description:"Show all log lines"`
+
+	DB     bool `long:"db"   description:"Show DB statements log lines"`
+	Errors bool `long:"errs" description:"Show error log lines"`
+
+	SortBy string `long:"sort-by" short:"s" description:"Sort by column [duration]"`
 
 	cmd
 }
