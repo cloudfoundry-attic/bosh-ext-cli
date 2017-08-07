@@ -51,10 +51,10 @@ func (c VisualizeEventsCmd) serveAPIEvents(w http.ResponseWriter, r *http.Reques
 		},
 	}
 
-	keys := []string{"action", "deployment", "instance",
-		"object-name", "object-type", "task", "event-user", "before", "after"}
+	allowedKeys := []string{"action", "deployment", "instance",
+		"object-name", "object-type", "task", "event-user", "before", "after", "before-id"}
 
-	for _, key := range keys {
+	for _, key := range allowedKeys {
 		if len(r.Form[key]) > 0 && len(r.Form[key][0]) > 0 {
 			cmd.Args = append(cmd.Args, "--"+key, r.Form[key][0])
 		}

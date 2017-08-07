@@ -34,7 +34,6 @@ const eventsUI = `
     <input type="text" name="instance" placeholder="instance" />
     <button type="submit">Go</button>
   </form>
-  <table></table>
 </div>
 
 <table id="event-tmpl" class="tmpl">
@@ -66,13 +65,15 @@ const eventsUI = `
     </td>
     <td class="context"><span>{context}</span></td>
     <td class="error"><span>{error}</span></td>
-  <tr>
+  </tr>
 </table>
 
 <table id="no-events-tmpl" class="tmpl">
-  <tr>
-    <td colspan="11">No matching events</td>
-  <tr>
+  <tr><td colspan="11">No matching events</td></tr>
+</table>
+
+<table id="error-events-tmpl" class="tmpl">
+  <tr><td colspan="11">Error fetching events</td></tr>
 </table>
 
 <script type="text/javascript">
@@ -149,9 +150,33 @@ function NewSearchCriteriaClearButton($input) {
   return {};
 }
 
+function NewMoreEventsButton($el, clickCallback) {
+  var $button = null;
+
+  function setUp() {
+    $button = $el.html("<button>More events...</button>").find("button");
+    $button.click(clickCallback);
+    $button.hide(); // default to hide
+  }
+
+  function show() { $button.show(); }
+  function hide() { $button.hide(); }
+
+  setUp();
+
+  return {
+    Show: show,
+    Hide: hide,
+  };
+}
+
 function Canvas($el, searchCallback) {
   var obj = {};
   var currCriteria = new EmptySearchCriteria();
+
+  var $eventsTable = null;
+  var moreEventsButton = null;
+  var lastEventID = null;
 
   function setUp() {
     $el.html($("#canvas-tmpl").html());
@@ -166,6 +191,8 @@ function Canvas($el, searchCallback) {
       NewSearchCriteriaClearButton($(this));
     });
 
+    $eventsTable = $('<table></table>').appendTo($el);
+
     $el.on("click", "a[data-query]", function(event) {
       event.preventDefault();
       // todo represent as a object
@@ -178,6 +205,9 @@ function Canvas($el, searchCallback) {
     NewCanvasDeleteButton(newNamedDivPrepended($el, "delete-button"), function() {
       $el.remove();
     });
+
+    moreEventsButton = NewMoreEventsButton(
+      newNamedDiv($el, "more-events-button"), obj.LoadMoreEvents);
   }
 
   obj.SearchCriteria = function() {
@@ -188,35 +218,64 @@ function Canvas($el, searchCallback) {
     criteria.ApplyToForm($el.find("form"));
     criteria.ApplyFocusToForm($el.find("form"));
     currCriteria = criteria;
-
-    $.post("/api/events", criteria.AsQuery())
-      .done(addEvents)
-      .fail(function() {
-        console.log("error");
-      });
+    $.post("/api/events", criteria.AsQuery()).done(setEvents).fail(showError);
   };
 
   obj.ResetCriteria = function() {
     currCriteria.ApplyToForm($el.find("form"));
   };
 
+  obj.LoadMoreEvents = function() {
+    var criteria = obj.SearchCriteria(); // todo clone currCriteria?
+    criteria.SetBeforeID(lastEventID);
+    $.post("/api/events", criteria.AsQuery()).done(addEvents).fail(showError);
+  };
+
+  function setEvents(data) {
+    if (data.Tables[0].Rows.length == 0) {
+      $eventsTable.html($("#no-events-tmpl").html());
+    } else {
+      addEvents(data);
+    }
+  }
+
+  function addEvents(data) {
+    if (data.Tables[0].Rows.length == 0) {
+      moreEventsButton.Hide();
+    } else {
+      var eventsHtml = '';
+
+      data.Tables[0].Rows.forEach(function(apiEvent) {
+        eventsHtml += buildEventTmpl(apiEvent);
+        lastEventID = apiEvent.id;
+      });
+
+      $eventsTable.append(eventsHtml);
+      showHideMoreEventsButton();
+    }
+  }
+
+  function showError() {
+    moreEventsButton.Hide();
+    $eventsTable.append($("#error-events-tmpl").html());
+  }
+
+  function showHideMoreEventsButton() {
+    var criteria = obj.SearchCriteria(); // todo clone currCriteria?
+    criteria.SetBeforeID(lastEventID);
+
+    $.post("/api/events", criteria.AsQuery()).done(function(data) {
+      if (data.Tables[0].Rows.length == 0) {
+        moreEventsButton.Hide();
+      } else {
+        moreEventsButton.Show();
+      }
+    }).fail(showError);
+  }
+
   var eventHtml = $('#event-tmpl').html();
   var eventKeys = ["action", "context", "deployment", "error", "id",
     "instance", "object_name", "object_type", "task_id", "time", "user"];
-
-  function addEvents(data) {
-    var eventsHtml = '';
-
-    if (data.Tables[0].Rows.length == 0) {
-      eventsHtml = $("#no-events-tmpl").html();
-    } else {
-      data.Tables[0].Rows.forEach(function(apiEvent) {
-        eventsHtml += buildEventTmpl(apiEvent);
-      });
-    }
-
-    $el.find('table').html(eventsHtml);
-  }
 
   function buildEventTmpl(apiEvent) {
     var eventHtml2 = eventHtml;
@@ -241,7 +300,6 @@ function EmptySearchCriteria() {
 
 function SearchCriteria($el) {
   var data = {};
-  var serializedData = "";
   var focusedInputName = null;
 
   var keys = ["after", "before", "event-user", "action",
@@ -252,17 +310,13 @@ function SearchCriteria($el) {
       data[key] = $el.find("input[name='"+key+"']").val();
     });
 
-    serializedData = $el.serialize();
-
     var $focused = $el.find("input:focus");
     if ($focused.length > 0) {
       focusedInputName = $focused.attr("name");
     }
   }
 
-  function AsQuery() {
-    return serializedData;
-  }
+  function AsQuery() { return data; }
 
   function ApplyToForm($el2) {
     Object.keys(data).forEach(function(key) {
@@ -276,12 +330,17 @@ function SearchCriteria($el) {
     }
   }
 
+  function SetBeforeID(id) {
+    data["before-id"] = id;
+  }
+
   setUp();
 
   return {
     AsQuery: AsQuery,
     ApplyToForm: ApplyToForm,
     ApplyFocusToForm: ApplyFocusToForm,
+    SetBeforeID: SetBeforeID,
   }
 }
 
@@ -311,14 +370,13 @@ window.addEventListener("load", function load(event){
 <style>
 .tmpl { display: none; }
 button { cursor: pointer; }
-form { margin-bottom: 10px; }
+.add-button, form, .canvas table, .more-events-button { margin-bottom: 10px; }
 input[type="text"], button { font-size: 18px; }
 input::placeholder { color: #ccc; }
 .canvas input { width: 100px; }
 .canvas input.expanded { width: 300px; }
 .delete-button { float: right; }
 .canvas {
-  margin-top: 10px;
   padding-top: 10px;
   border-top: 2px solid #efefef;
 }
