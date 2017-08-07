@@ -23,10 +23,11 @@ $ bin/build
 $ out/bosh-lint lint-release --dir ~/workspace/whatever-release
 ```
 
-Run tests:
+Run `visualize-events`:
 
 ```
-$ bin/test
+$ export BOSH_ENVIRONMENT=vbox
+$ out/bosh-lint visualize-events
 ```
 
 ## Todo
