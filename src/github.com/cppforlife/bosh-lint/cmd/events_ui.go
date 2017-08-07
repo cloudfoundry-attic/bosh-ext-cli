@@ -37,7 +37,7 @@ const eventsUI = `
 </div>
 
 <table id="event-tmpl" class="tmpl">
-  <tr>
+  <tr data-event-id="{id}">
     <td class="id">{id}</td>
     <td class="time">
       <a href="#" data-query="after" data-value="{time}">{time}</a>
@@ -202,6 +202,8 @@ function Canvas($el, searchCallback) {
       searchCallback(obj);
     });
 
+    NewHoverableEvents($el);
+
     NewCanvasDeleteButton(newNamedDivPrepended($el, "delete-button"), function() {
       $el.remove();
     });
@@ -288,6 +290,29 @@ function Canvas($el, searchCallback) {
   setUp();
 
   return obj;
+}
+
+function NewHoverableEvents($el) {
+  var $selected = $el;
+  var className = "hover";
+
+  $el.on("mouseover", "table tr", function(event) {
+    var $tr = $(event.target).parent("tr");
+    if ($tr.length == 0) return;
+
+    $selected.removeClass(className);
+    $selected = $tr;
+
+    // Example: "200 <- 199" hovering over 200
+    var ids = String($tr.data("event-id")).split(" <- ");
+    if (ids.length == 2) {
+      $selected = $selected.add($el.find("tr[data-event-id='"+ids[1]+"']"));
+    }
+
+    $selected.addClass(className);
+  });
+
+  return {};
 }
 
 function EmptySearchCriteria() {
@@ -408,6 +433,7 @@ td.error span {
   font-family: system-ui;
   cursor: pointer;
 }
+table tr.hover { background: yellow; }
 </style>
 
 </body>
