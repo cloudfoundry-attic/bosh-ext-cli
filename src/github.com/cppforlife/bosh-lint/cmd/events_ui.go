@@ -42,7 +42,7 @@ const eventsUI = `
 		<td class="id">{id}</td>
 		<td class="time">{time}</td>
 		<td class="user">
-			<a href="#" data-query="user" data-value="{user}">{user}</a>
+			<a href="#" data-query="event-user" data-value="{user}">{user}</a>
 		</td>
 		<td class="action">
 			<a href="#" data-query="action" data-value="{action}">{action}</a>
@@ -277,11 +277,12 @@ window.addEventListener("load", function load(event){
 .tmpl { display: none; }
 button { cursor: pointer; }
 form { margin-bottom: 10px; }
-input[type="text"],
-button {
-  font-size: 18px;
-}
+input[type="text"], button { font-size: 18px; }
 input::placeholder { color: #ccc; }
+input[name="action"],
+input[name="event-user"],
+input[name="object-type"],
+input[name="task"] { width: 70px; }
 .delete-button { float: right; }
 .canvas {
 	margin-top: 10px;
@@ -298,11 +299,11 @@ td {
 	padding: 0 5px;
 }
 td.time { width: 230px; }
-td.context, td.error { width: 250px; }
+td.context, td.error { width: 30px; }
 td.context span,
 td.error span {
 	display: inline-block;
-	width: 230px;
+	width: 20px;
 	white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
