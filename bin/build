@@ -1,3 +1,5 @@
 #!/bin/bash
 
+go fmt github.com/cppforlife/bosh-lint/...
+
 go build -o out/bosh-lint github.com/cppforlife/bosh-lint

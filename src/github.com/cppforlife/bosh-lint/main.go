@@ -43,20 +43,20 @@ func main() {
 func newLogger() boshlog.Logger {
 	level := boshlog.LevelNone
 
-	logLevelString := os.Getenv("BOSH_LOG_LEVEL")
+	logLevelString := os.Getenv("BOSH_LINT_LOG_LEVEL")
 
 	if logLevelString != "" {
 		var err error
 		level, err = boshlog.Levelify(logLevelString)
 		if err != nil {
-			err = bosherr.WrapError(err, "Invalid BOSH_LOG_LEVEL value")
+			err = bosherr.WrapError(err, "Invalid BOSH_LINT_LOG_LEVEL value")
 			logger := boshlog.NewLogger(boshlog.LevelError)
 			ui := boshui.NewConsoleUI(logger)
 			fail(err, ui, logger)
 		}
 	}
 
-	logPath := os.Getenv("BOSH_LOG_PATH")
+	logPath := os.Getenv("BOSH_LINT_LOG_PATH")
 	if logPath != "" {
 		return newSignalableFileLogger(logPath, level)
 	}

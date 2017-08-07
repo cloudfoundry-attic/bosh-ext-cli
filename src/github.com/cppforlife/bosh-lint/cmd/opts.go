@@ -20,6 +20,8 @@ type BoshOpts struct {
 	LintManifest      LintManifestOpts      `command:"lint-manifest"       alias:"m"   alias:"manifest"                     description:"Lint deployment manifest"`
 
 	DebugTask DebugTaskOpts `command:"debug-task" description:"Interpret task debug log"`
+
+	VisualizeEvents VisualizeEventsOpts `command:"visulize-events" alias:"ve" description:"Visualize events in the browser"`
 }
 
 type HelpOpts struct {
@@ -69,6 +71,10 @@ type DebugTaskOpts struct {
 
 	SortBy string `long:"sort-by" short:"s" description:"Sort by column [duration]"`
 
+	cmd
+}
+
+type VisualizeEventsOpts struct {
 	cmd
 }
 
