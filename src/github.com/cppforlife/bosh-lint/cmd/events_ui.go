@@ -134,9 +134,10 @@ function Canvas($el, searchCallback) {
 
 		$el.on("click", "a[data-query]", function(event) {
 			event.preventDefault();
+      // todo represent as a object
 			var query = $(event.target).data("query");
 			var val = $(event.target).data("value");
-			$el.find("form").find("input[name='"+query+"']").val(val);
+			$el.find("form").find("input[name='"+query+"']").val(val).focus();
 			searchCallback(obj);
 		});
 
