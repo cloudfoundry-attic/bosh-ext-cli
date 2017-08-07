@@ -27,12 +27,12 @@ const eventsUI = `
     <input type="text" name="before" placeholder="before" />
     <input type="text" name="event-user" placeholder="user" />
     <input type="text" name="action" placeholder="action" />
-    <input type="text" name="object-type" placeholder="object-type" />
-    <input type="text" name="object-name" placeholder="object-name" />
+    <input type="text" name="object-type" placeholder="obj. type" />
+    <input type="text" name="object-name" placeholder="obj. name" />
     <input type="text" name="task" placeholder="task" />
     <input type="text" name="deployment" placeholder="deployment" />
     <input type="text" name="instance" placeholder="instance" />
-    <button type="submit">Submit</button>
+    <button type="submit">Go</button>
   </form>
   <table></table>
 </div>
@@ -40,7 +40,9 @@ const eventsUI = `
 <table id="event-tmpl" class="tmpl">
   <tr>
     <td class="id">{id}</td>
-    <td class="time">{time}</td>
+    <td class="time">
+      <a href="#" data-query="after" data-value="{time}">{time}</a>
+    </td>
     <td class="user">
       <a href="#" data-query="event-user" data-value="{user}">{user}</a>
     </td>
@@ -120,6 +122,18 @@ function NewCanvasDeleteButton($el, clickCallback) {
   return {};
 }
 
+function NewSearchCriteriaExpandingInput($input) {
+  function setUp() {
+    $input
+      .focus(function() { $(this).addClass("expanded"); })
+      .blur(function() { $(this).removeClass("expanded"); });
+  }
+
+  setUp();
+
+  return {};
+}
+
 function NewSearchCriteriaClearButton($input) {
   function setUp() {
     var $button = $("<a class='search-criteria-clear-button'>x</a>").click(function(event) {
@@ -148,6 +162,7 @@ function Canvas($el, searchCallback) {
     });
 
     $el.find("form input").each(function() {
+      NewSearchCriteriaExpandingInput($(this));
       NewSearchCriteriaClearButton($(this));
     });
 
@@ -299,12 +314,8 @@ button { cursor: pointer; }
 form { margin-bottom: 10px; }
 input[type="text"], button { font-size: 18px; }
 input::placeholder { color: #ccc; }
-input[name="after"],
-input[name="before"],
-input[name="action"],
-input[name="event-user"],
-input[name="object-type"],
-input[name="task"] { width: 70px; }
+.canvas input { width: 100px; }
+.canvas input.expanded { width: 300px; }
 .delete-button { float: right; }
 .canvas {
   margin-top: 10px;
