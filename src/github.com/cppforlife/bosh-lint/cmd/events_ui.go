@@ -127,7 +127,10 @@ function NewSearchCriteriaExpandingInput($input) {
   function setUp() {
     $input
       .focus(function() { $(this).addClass("expanded"); })
-      .blur(function() { $(this).removeClass("expanded"); });
+      .blur(function() {
+        var $el = $(this);
+        setTimeout(function() { $el.removeClass("expanded"); }, 100);
+      });
   }
 
   setUp();
