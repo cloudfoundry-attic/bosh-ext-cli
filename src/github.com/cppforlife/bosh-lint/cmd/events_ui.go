@@ -120,6 +120,21 @@ function NewCanvasDeleteButton($el, clickCallback) {
 	return {};
 }
 
+function NewSearchCriteriaClearButton($input) {
+  function setUp() {
+    var $button = $("<a class='search-criteria-clear-button'>x</a>").click(function(event) {
+      event.preventDefault();
+      $input.val("");
+      $input.focus();
+    });
+    $input.after($button);
+  }
+
+  setUp();
+
+  return {};
+}
+
 function Canvas($el, searchCallback) {
 	var obj = {};
 	var currCriteria = new EmptySearchCriteria();
@@ -131,6 +146,10 @@ function Canvas($el, searchCallback) {
 			event.preventDefault();
 			searchCallback(obj);
 		});
+
+    $el.find("form input").each(function() {
+      NewSearchCriteriaClearButton($(this));
+    });
 
 		$el.on("click", "a[data-query]", function(event) {
 			event.preventDefault();
@@ -280,6 +299,8 @@ button { cursor: pointer; }
 form { margin-bottom: 10px; }
 input[type="text"], button { font-size: 18px; }
 input::placeholder { color: #ccc; }
+input[name="after"],
+input[name="before"],
 input[name="action"],
 input[name="event-user"],
 input[name="object-type"],
@@ -308,6 +329,15 @@ td.error span {
 	white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+.search-criteria-clear-button {
+  background: none;
+  border: none;
+  vertical-align: top;
+  padding: 5px;
+  font-size: 12px;
+  font-family: system-ui;
+  cursor: pointer;
 }
 </style>
 
