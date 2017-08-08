@@ -76,6 +76,26 @@ const eventsUI = `
   <tr><td colspan="11">Error fetching events</td></tr>
 </table>
 
+<table id="task-tmpl" class="tmpl">
+  <tr>
+    <td class="id">{id}</td>
+    <td class="started_at">{started_at}</td>
+    <td class="last_activity_at">{last_activity_at}</td>
+    <td class="user">{user}</td>
+    <td class="deployment">{deployment}</td>
+    <td class="description">{description}</td>
+    <td class="result">{result}</td>
+  </tr>
+</table>
+
+<table id="no-tasks-tmpl" class="tmpl">
+  <tr><td colspan="11">No matching tasks</td></tr>
+</table>
+
+<table id="error-tasks-tmpl" class="tmpl">
+  <tr><td colspan="11">Error fetching tasks</td></tr>
+</table>
+
 <script type="text/javascript">
 
 function CanvasCollection($el) {
@@ -83,15 +103,22 @@ function CanvasCollection($el) {
 
   function setUp() {
     $canvases = newNamedDiv($el, "canvases")
-    NewCanvasAddButton(newNamedDivPrepended($el, "add-button"), NewCanvas);
+    NewCanvasAddButton(newNamedDivPrepended($el, "add-button"), "events", NewEventsCanvas);
+    NewCanvasAddButton(newNamedDivPrepended($el, "add-button"), "tasks", NewTasksCanvas);
   }
 
-  function NewCanvas() {
-    return new Canvas(newNamedDivPrepended($canvases, "canvas"), searchCallback);
+  function NewEventsCanvas() {
+    return new Canvas(newNamedDivPrepended($canvases, "canvas"), searchEventsCallback);
   }
 
-  function searchCallback(canvas) {
-    var canvas2 = NewCanvas();
+  function NewTasksCanvas() {
+    var canvas = new TasksCanvas(newNamedDivPrepended($canvases, "canvas"), function() {});
+    canvas.Load();
+    return canvas;
+  }
+
+  function searchEventsCallback(canvas) {
+    var canvas2 = NewEventsCanvas();
     canvas2.Search(canvas.SearchCriteria());
     canvas.ResetCriteria();
   }
@@ -99,13 +126,14 @@ function CanvasCollection($el) {
   setUp();
 
   return {
-    NewCanvas: NewCanvas
+    NewEventsCanvas: NewEventsCanvas,
+    NewTasksCanvas: NewTasksCanvas,
   };
 }
 
-function NewCanvasAddButton($el, clickCallback) {
+function NewCanvasAddButton($el, title, clickCallback) {
   function setUp() {
-    $el.html("<button>+</button>").find("button").click(clickCallback);
+    $el.html("<button>+ "+title+"</button>").find("button").click(clickCallback);
   }
 
   setUp();
@@ -372,6 +400,57 @@ function SearchCriteria($el) {
   }
 }
 
+function TasksCanvas($el, callback_todo) {
+  var obj = {};
+
+  function setUp() {
+    $el.html($("#tasks-tmpl").html());
+
+    $table = $('<table></table>').appendTo($el);
+
+    NewCanvasDeleteButton(newNamedDivPrepended($el, "delete-button"), function() {
+      $el.remove();
+    });
+  }
+
+  obj.Load = function() {
+    $.post("/api/tasks", {"recent": "200", "all": null}).done(setTasks).fail(showError);
+  };
+
+  function setTasks(data) {
+    if (data.Tables[0].Rows.length > 0) {
+      var html = '';
+
+      data.Tables[0].Rows.forEach(function(apiTask) {
+        html += buildEventTmpl(apiTask);
+        lastEventID = apiTask.id;
+      });
+
+      $table.append(html);
+    }
+  }
+
+  function showError() {
+    $table.append($("#error-tasks-tmpl").html());
+  }
+
+  var taskHtml = $('#task-tmpl').html();
+  var taskKeys = ["deployment", "description", "id",
+    "last_activity_at", "result", "started_at", "state", "user"];
+
+  function buildEventTmpl(taskEvent) {
+    var taskHtml2 = taskHtml;
+    taskKeys.forEach(function(key) {
+      taskHtml2 = taskHtml2.replace(new RegExp('{' + key + '}', 'g'), taskEvent[key]);
+    });
+    return taskHtml2;
+  }
+
+  setUp();
+
+  return obj;
+}
+
 function newNamedDiv($el, className) {
   return $el.append("<div class='"+className+"'></div>").find("div:last")
 }
@@ -384,7 +463,7 @@ function main() {
   var collection = new CanvasCollection(newNamedDiv($("#root"), "canvas-collection"));
 
   // start by default with new canvas with all results
-  var firstCanvas = collection.NewCanvas();
+  var firstCanvas = collection.NewEventsCanvas();
   firstCanvas.Search(new EmptySearchCriteria());
 }
 

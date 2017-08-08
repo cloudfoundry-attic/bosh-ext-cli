@@ -24,6 +24,8 @@ func NewVisualizeEventsCmd(cmdRunner boshsys.CmdRunner, ui boshui.UI, logger bos
 func (c VisualizeEventsCmd) Run() error {
 	http.HandleFunc("/", c.serveUI)
 	http.HandleFunc("/api/events", c.serveAPIEvents)
+	http.HandleFunc("/api/tasks", c.serveAPITasks)
+	http.HandleFunc("/api/task", c.serveAPITask)
 
 	c.ui.PrintLinef("Starting server on http://localhost:9090")
 
@@ -45,10 +47,6 @@ func (c VisualizeEventsCmd) serveAPIEvents(w http.ResponseWriter, r *http.Reques
 	cmd := boshsys.Command{
 		Name: "bosh",
 		Args: []string{"events", "--json"},
-
-		Env: map[string]string{
-			"BOSH_LOG_LEVEL": "NONE",
-		},
 	}
 
 	allowedKeys := []string{"action", "deployment", "instance",
@@ -71,5 +69,67 @@ func (c VisualizeEventsCmd) serveAPIEvents(w http.ResponseWriter, r *http.Reques
 	_, err = w.Write([]byte(stdout))
 	if err != nil {
 		c.logger.Error(c.logTag, "Failed to write API events response")
+	}
+}
+
+func (c VisualizeEventsCmd) serveAPITasks(w http.ResponseWriter, r *http.Request) {
+	c.logger.Debug(c.logTag, "Serving API tasks")
+
+	r.ParseForm()
+
+	c.logger.Debug(c.logTag, "Form submitted: %#v", r.Form)
+
+	cmd := boshsys.Command{
+		Name: "bosh",
+		Args: []string{"tasks", "--json"},
+	}
+
+	allowedKeys := []string{"recent", "all"}
+
+	for _, key := range allowedKeys {
+		if len(r.Form[key]) > 0 {
+			if len(r.Form[key][0]) > 0 {
+				cmd.Args = append(cmd.Args, "--"+key+"="+r.Form[key][0])
+			} else {
+				cmd.Args = append(cmd.Args, "--"+key)
+			}
+		}
+	}
+
+	stdout, _, _, err := c.cmdRunner.RunComplexCommand(cmd)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Add("Content-Type", "application/json")
+
+	_, err = w.Write([]byte(stdout))
+	if err != nil {
+		c.logger.Error(c.logTag, "Failed to write API tasks response")
+	}
+}
+
+func (c VisualizeEventsCmd) serveAPITask(w http.ResponseWriter, r *http.Request) {
+	c.logger.Debug(c.logTag, "Serving API task")
+
+	c.logger.Debug(c.logTag, "Form submitted: %#v", r.Form)
+
+	cmd := boshsys.Command{
+		Name: "bosh",
+		Args: []string{"task", "--json", r.URL.Query().Get("id")},
+	}
+
+	stdout, _, _, err := c.cmdRunner.RunComplexCommand(cmd)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Add("Content-Type", "application/json")
+
+	_, err = w.Write([]byte(stdout))
+	if err != nil {
+		c.logger.Error(c.logTag, "Failed to write API task response")
 	}
 }
