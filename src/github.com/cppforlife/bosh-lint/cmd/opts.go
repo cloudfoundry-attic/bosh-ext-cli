@@ -21,7 +21,7 @@ type BoshOpts struct {
 
 	DebugTask DebugTaskOpts `command:"debug-task" description:"Interpret task debug log"`
 
-	VisualizeEvents VisualizeEventsOpts `command:"visulize-events" alias:"ve" description:"Visualize events in the browser"`
+	Web WebOpts `command:"web" description:"Browser based CLI experience"`
 }
 
 type HelpOpts struct {
@@ -74,7 +74,7 @@ type DebugTaskOpts struct {
 	cmd
 }
 
-type VisualizeEventsOpts struct {
+type WebOpts struct {
 	cmd
 }
 

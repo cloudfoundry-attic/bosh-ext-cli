@@ -68,8 +68,8 @@ func (c Cmd) Execute() (cmdErr error) {
 	case *DebugTaskOpts:
 		return NewDebugTaskCmd(deps.UI).Run(*opts)
 
-	case *VisualizeEventsOpts:
-		return NewVisualizeEventsCmd(deps.CmdRunner, deps.UI, deps.Logger).Run()
+	case *WebOpts:
+		return NewWebCmd(deps.CmdRunner, deps.UI, deps.Logger).Run()
 
 	case *MessageOpts:
 		deps.UI.PrintBlock(opts.Message)
