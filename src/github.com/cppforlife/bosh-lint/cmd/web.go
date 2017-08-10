@@ -40,6 +40,7 @@ func NewWebCmd(cmdRunner boshsys.CmdRunner, ui boshui.UI, logger boshlog.Logger)
 			"deployments": []apiOpt{},
 			"instances": []apiOpt{
 				apiOpt{Name: "deployment"},
+				apiOpt{Name: "ps", WithoutValue: true},
 				apiOpt{Name: "details", WithoutValue: true},
 			},
 			"tasks": []apiOpt{
