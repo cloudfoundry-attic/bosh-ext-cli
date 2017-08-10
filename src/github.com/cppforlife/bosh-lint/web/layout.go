@@ -22,6 +22,7 @@ const Layout string = `
 	instancesCanvas +
 	tasksTable +
 	tasksCanvas +
+	taskOutputForm +
 	taskOutputTable +
 	taskOutputCanvas +
 	eventsSearchCriteria +

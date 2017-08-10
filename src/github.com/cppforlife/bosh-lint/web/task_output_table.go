@@ -30,9 +30,13 @@ function TaskOutputLineTmpl() {
   // Example: "Creating missing vms: zookeeper/d3bfdf1e-57f0-4b1c-8f3e-c11a6759ee24 (0)"
   // todo catches jobs and packages
   var instanceReg = /^(.+)\s+(\S+?\/\S+?)\s+(.+)$/;
+  var line = 0;
 
   return {
     Render: function(data) {
+      if ((line++)==0) {
+        data = data.replace(/^\s+/, "");
+      }
       var pieces = data.split("\n");
       for (var i=0; i<pieces.length; i++) {
         if (instanceReg.test(pieces[i])) {

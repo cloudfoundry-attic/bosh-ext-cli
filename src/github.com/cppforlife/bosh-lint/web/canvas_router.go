@@ -37,6 +37,10 @@ function CanvasRouter(collection) {
       var canvas = collection.NewEventsCanvas();
       canvas.Search(criteria);
     },
+
+    NewTaskOutputCanvas: function(id) {
+      collection.NewTaskOutputCanvas(id);
+    }
   }
 }
 
