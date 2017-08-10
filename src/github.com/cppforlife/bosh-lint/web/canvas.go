@@ -6,9 +6,17 @@ const canvas string = `
 function Canvas($el, reloadCallback) {
   function setUp() {
     $el.addClass("canvas");
-    CanvasDeleteButton(newDivPrepended($el), function() { $el.remove(); });
+
+    var reloadInterval = null;
+
+    CanvasDeleteButton(newDivPrepended($el), function() {
+      $el.remove();
+      window.clearInterval(reloadInterval);
+    });
+
     if (reloadCallback) {
       CanvasReloadButton(newDivPrepended($el), reloadCallback);  
+      reloadInterval = setInterval(reloadCallback, 5000);
     }
   }
   setUp();
