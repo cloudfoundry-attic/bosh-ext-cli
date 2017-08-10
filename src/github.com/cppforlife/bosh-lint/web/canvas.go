@@ -3,10 +3,13 @@ package web
 const canvas string = `
 <script type="text/javascript">
 
-function Canvas($el) {
+function Canvas($el, reloadCallback) {
   function setUp() {
     $el.addClass("canvas");
     CanvasDeleteButton(newDivPrepended($el), function() { $el.remove(); });
+    if (reloadCallback) {
+      CanvasReloadButton(newDivPrepended($el), reloadCallback);  
+    }
   }
   setUp();
   return {};
@@ -24,7 +27,16 @@ function CanvasAddButton($el, title, clickCallback) {
 function CanvasDeleteButton($el, clickCallback) {
   function setUp() {
     $el.addClass("canvas-delete-button");
-    $el.html("<button>-</button>").find("button").click(clickCallback);
+    $el.html("<button title='remove'>-</button>").find("button").click(clickCallback);
+  }
+  setUp();
+  return {};
+}
+
+function CanvasReloadButton($el, clickCallback) {
+  function setUp() {
+    $el.addClass("canvas-reload-button");
+    $el.html("<button title='reload'>c</button>").find("button").click(clickCallback);
   }
   setUp();
   return {};
@@ -41,6 +53,10 @@ function CanvasDeleteButton($el, clickCallback) {
   display: inline-block;
   margin-right: 10px;
 }
-.canvas-delete-button { float: right; }
+.canvas-delete-button,
+.canvas-reload-button {
+  margin-left: 10px;
+  float: right;
+}
 </style>
 `

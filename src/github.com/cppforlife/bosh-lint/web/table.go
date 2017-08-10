@@ -45,7 +45,7 @@ function TableDataSource(command, table, lastItemFunc) {
 
         $.post(path, moreQuery)
           .done(function(data) { table.AddData(noteData(data)); })
-          .fail(table.ShowError);  
+          .fail(table.ShowError);
       } else {
         table.AddData([]);
       }
@@ -67,6 +67,7 @@ function Table($el, moreCallback, tmpls) {
       $table.html(tmpls.empty.Render());
       moreButton.Hide();
     } else {
+      $table.html('');
       addData(data);
     }
     if (!hasMoreData) {

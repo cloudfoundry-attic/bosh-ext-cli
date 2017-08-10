@@ -7,7 +7,7 @@ function DeploymentsCanvas($el, canvasRouter) {
   var table = null;
 
   function setUp() {
-    Canvas($el);
+    Canvas($el, function() { table.Load(); });
     table = DeploymentsTable(newDiv($el));
     canvasRouter.Apply($el);
   }

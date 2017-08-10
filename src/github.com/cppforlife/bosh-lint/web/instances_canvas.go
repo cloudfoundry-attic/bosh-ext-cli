@@ -5,9 +5,10 @@ const instancesCanvas string = `
 
 function InstancesCanvas($el, canvasRouter) {
   var table = null;
+  var loadedDeployment = null;
 
   function setUp() {
-    Canvas($el);
+    Canvas($el, function() { table.Load({"deployment": loadedDeployment}); });
     table = InstancesTable(newDiv($el));
     canvasRouter.Apply($el);
   }

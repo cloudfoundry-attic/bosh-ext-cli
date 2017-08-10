@@ -10,7 +10,7 @@ function EventsCanvas($el, canvasRouter) {
   var currCriteria = new EventsSearchCriteria();
 
   function setUp() {
-    Canvas($el);
+    Canvas($el, null);
 
     form = EventsSearchForm(newDiv($el), function() {
       canvasRouter.NewEventsCanvas(form.Criteria());

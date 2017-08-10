@@ -9,7 +9,7 @@ function TaskOutputCanvas($el, canvasRouter) {
   var loadedID = null;
 
   function setUp() {
-    Canvas($el);
+    Canvas($el, function() { table.Load(loadedID); });
 
     form = TaskOutputForm(newDiv($el), function(id) {
       canvasRouter.NewTaskOutputCanvas(id);

@@ -7,7 +7,7 @@ function TasksCanvas($el, canvasRouter) {
   var table = null;
 
   function setUp() {
-    Canvas($el);
+    Canvas($el, function() { table.Load(); });
     table = TasksTable(newDiv($el));
     canvasRouter.Apply($el);
   }
