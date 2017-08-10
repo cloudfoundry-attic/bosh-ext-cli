@@ -75,6 +75,8 @@ type DebugTaskOpts struct {
 }
 
 type WebOpts struct {
+	ListenPort int    `long:"port" description:"Port to listen on"    default:"9090"`
+	ListenAddr string `long:"addr" description:"Address to listen on" default:"127.0.0.1"`
 	cmd
 }
 

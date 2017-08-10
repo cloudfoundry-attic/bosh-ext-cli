@@ -66,13 +66,14 @@ func NewWebCmd(cmdRunner boshsys.CmdRunner, ui boshui.UI, logger boshlog.Logger)
 	}
 }
 
-func (c WebCmd) Run() error {
+func (c WebCmd) Run(opts WebOpts) error {
 	http.HandleFunc("/", c.serveUI)
 	http.HandleFunc("/api/command", c.serveAPICommand)
 
-	c.ui.PrintLinef("Starting server on http://localhost:9090")
+	addr := fmt.Sprintf("%s:%d", opts.ListenAddr, opts.ListenPort)
+	c.ui.PrintLinef("Starting server on http://%s", addr)
 
-	return http.ListenAndServe(":9090", nil)
+	return http.ListenAndServe(addr, nil)
 }
 
 func (c WebCmd) serveUI(w http.ResponseWriter, r *http.Request) {

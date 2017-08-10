@@ -69,7 +69,7 @@ func (c Cmd) Execute() (cmdErr error) {
 		return NewDebugTaskCmd(deps.UI).Run(*opts)
 
 	case *WebOpts:
-		return NewWebCmd(deps.CmdRunner, deps.UI, deps.Logger).Run()
+		return NewWebCmd(deps.CmdRunner, deps.UI, deps.Logger).Run(*opts)
 
 	case *MessageOpts:
 		deps.UI.PrintBlock(opts.Message)
