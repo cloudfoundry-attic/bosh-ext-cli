@@ -16,7 +16,10 @@ function InstancesCanvas($el, canvasRouter) {
   setUp();
 
   return {
-    Load: function(deployment) { table.Load({"deployment": deployment}); },
+    Load: function(deployment) {
+      loadedDeployment = deployment;
+      table.Load({"deployment": deployment});
+    },
   };
 }
 
