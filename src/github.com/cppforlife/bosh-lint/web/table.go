@@ -132,6 +132,5 @@ td {
   vertical-align: top;
   padding: 0 5px;
 }
-table tr.hover { background: yellow; }
 </style>
 `

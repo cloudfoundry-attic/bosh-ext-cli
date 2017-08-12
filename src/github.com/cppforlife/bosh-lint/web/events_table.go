@@ -30,8 +30,18 @@ const eventsTable string = `
     <td class="instance">
       <a href="#" data-query="instance" data-value="{instance}">{instance}</a>
     </td>
-    <td class="context"><span>{context}</span></td>
-    <td class="error"><span>{error}</span></td>
+  </tr>
+</table>
+
+<table id="event-context-tmpl" class="tmpl">
+  <tr class="event-context-table-row">
+    <td colspan="9"><pre>{_}</pre></td>
+  </tr>
+</table>
+
+<table id="event-error-tmpl" class="tmpl">
+  <tr class="event-error-table-row">
+    <td colspan="9"><pre>{_}</pre></td>
   </tr>
 </table>
 
@@ -43,11 +53,9 @@ function EventsTable($el) {
   function setUp() {    
     var moreCallback = function() { dataSource.More(); }
     var tmpls = {
-      empty: Tmpl('<tr><td colspan="11">No matching events</td></tr>', []),
-      error: Tmpl('<tr><td colspan="11">Error fetching events</td></tr>', []),
-      dataItem: Tmpl($("#event-tmpl").html(), 
-        ["action", "context", "deployment", "error", "id",
-          "instance", "object_name", "object_type", "task_id", "time", "user"]),
+      empty: Tmpl('<tr><td colspan="9">No matching events</td></tr>', []),
+      error: Tmpl('<tr><td colspan="9">Error fetching events</td></tr>', []),
+      dataItem: EventTmpl(),
     };
 
     var table = Table($el, moreCallback, tmpls);
@@ -64,6 +72,28 @@ function EventsTable($el) {
   };
 }
 
+function EventTmpl() {
+  var regularTmpl = Tmpl($("#event-tmpl").html(), 
+    ["action", "context", "deployment", "error", "id",
+      "instance", "object_name", "object_type", "task_id", "time", "user"]);
+
+  var contextTmpl = Tmpl1($("#event-context-tmpl").html());
+  var errorTmpl = Tmpl1($("#event-error-tmpl").html());
+
+  return {
+    Render: function(data) {
+      var result = regularTmpl.Render(data);
+      if (data.context.length > 0) {
+        result += contextTmpl.Render(data.context);
+      }
+      if (data.error.length > 0) {
+        result += errorTmpl.Render(data.error);
+      }
+      return result;
+    }
+  };
+}
+
 function HoverableEvents($el) {
   var $selected = $el;
   var className = "hover";
@@ -71,6 +101,7 @@ function HoverableEvents($el) {
   $el.on("mouseover", "table tr", function(event) {
     var $tr = $(event.target).parent("tr");
     if ($tr.length == 0) return;
+    if (!$tr.data("event-id")) return;
 
     $selected.removeClass(className);
     $selected = $tr;
@@ -101,5 +132,9 @@ function HoverableEvents($el) {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.event-context-table-row pre,
+.event-error-table-row pre { margin: 7px 0; }
+.event-error-table-row { background: pink; }
+table tr.hover { background: yellow; }
 </style>
 `
