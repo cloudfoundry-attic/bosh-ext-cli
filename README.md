@@ -32,16 +32,21 @@ $ out/bosh-lint web
 
 ## Todo
 
-- release: notice common props between release jobs
-- release: multiple jobs?
-- release: camelCase vs snake case
-- `set -e` in packaging?
-- pre_packaging presence?
-- job description presence
-- `type: password` annotation
-- extrapolate links usage
-- discover_external_ip presence
-- logrotate presence
-- todo markers
-- consolidate explanation
-- greedy blob inclusion?
+- linting
+  - release: notice common props between release jobs
+  - release: multiple jobs?
+  - release: camelCase vs snake case
+  - `set -e` in packaging?
+  - pre_packaging presence?
+  - job description presence
+  - `type: password` annotation
+  - extrapolate links usage
+  - discover_external_ip presence
+  - logrotate presence
+  - todo markers
+  - consolidate explanation
+  - greedy blob inclusion?
+- web
+  - reload events
+  - output for currently running tasks
+  - bosh task (errored task) -> no error
