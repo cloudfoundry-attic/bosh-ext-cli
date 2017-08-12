@@ -30,8 +30,8 @@ function TasksTable($el) {
   function setUp() {
     var moreCallback = function() { dataSource.More(); }
     var tmpls = {
-      empty: Tmpl('<tr><td colspan="7">No matching tasks</td></tr>', []),
-      error: Tmpl('<tr><td colspan="7">Error fetching tasks</td></tr>', []),
+      empty: Tmpl('<tr><td colspan="8">No matching tasks</td></tr>', []),
+      error: Tmpl('<tr><td colspan="8">Error fetching tasks</td></tr>', []),
       dataItem: TaskTmpl(),
     };
     var table = Table($el, moreCallback, tmpls);
@@ -65,6 +65,6 @@ function TaskTmpl() {
 </script>
 
 <style>
-.task-problematic-table-row { background: pink; }
+.task-problematic-table-row { background: #ffe5ea; }
 </style>
 `

@@ -2,7 +2,7 @@ package web
 
 const eventsTable string = `
 <table id="event-tmpl" class="tmpl">
-  <tr data-event-id="{id}" class="event-table-row">
+  <tr data-event-id="{id}" class="event-table-row {type_css_class}">
     <td class="id">{id}</td>
     <td class="time">
       <a href="#" data-query="after" data-value="{time}">{time}</a>
@@ -75,20 +75,28 @@ function EventsTable($el) {
 function EventTmpl() {
   var regularTmpl = Tmpl($("#event-tmpl").html(), 
     ["action", "context", "deployment", "error", "id",
-      "instance", "object_name", "object_type", "task_id", "time", "user"]);
+      "instance", "object_name", "object_type", "task_id", "time", "user",
+      "type_css_class"]);
 
   var contextTmpl = Tmpl1($("#event-context-tmpl").html());
   var errorTmpl = Tmpl1($("#event-error-tmpl").html());
 
   return {
     Render: function(data) {
+      data.type_css_class = ""
+      if (data.object_type == "lock") {
+        data.type_css_class = "event-boring-table-row"
+      }
+
       var result = regularTmpl.Render(data);
+      
       if (data.context.length > 0) {
         result += contextTmpl.Render(data.context);
       }
       if (data.error.length > 0) {
         result += errorTmpl.Render(data.error);
       }
+      
       return result;
     }
   };
@@ -133,8 +141,12 @@ function HoverableEvents($el) {
   text-overflow: ellipsis;
 }
 .event-context-table-row pre,
-.event-error-table-row pre { margin: 7px 0; }
-.event-error-table-row { background: pink; }
+.event-error-table-row pre {
+  margin: 3px 0;
+  color: #555;
+}
+.event-error-table-row { background: #ffe5ea; }
+.event-boring-table-row a { color: #bbb; }
 table tr.hover { background: yellow; }
 </style>
 `
