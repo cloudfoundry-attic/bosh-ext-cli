@@ -2,11 +2,12 @@ package web
 
 const tasksTable string = `
 <table id="task-tmpl" class="tmpl">
-  <tr>
+  <tr class="{state_css_class}">
     <td class="id">
       <a href="#" data-query="task" data-value="{id}">{id}</a>
       <a href="#" data-query="task-output-canvas" data-value="{id}">...</a>
     </td>
+    <td class="state">{state}</td>
     <td class="started_at">{started_at}</td>
     <td class="last_activity_at">{last_activity_at}</td>
     <td class="user">
@@ -31,9 +32,7 @@ function TasksTable($el) {
     var tmpls = {
       empty: Tmpl('<tr><td colspan="7">No matching tasks</td></tr>', []),
       error: Tmpl('<tr><td colspan="7">Error fetching tasks</td></tr>', []),
-      dataItem: Tmpl($("#task-tmpl").html(),
-        ["deployment", "description", "id",
-          "last_activity_at", "result", "started_at", "state", "user"]),
+      dataItem: TaskTmpl(),
     };
     var table = Table($el, moreCallback, tmpls);
     dataSource = TableDataSource("tasks", table, null);
@@ -46,5 +45,26 @@ function TasksTable($el) {
   };
 }
 
+function TaskTmpl() {
+  var tmpl = Tmpl($("#task-tmpl").html(),
+    ["deployment", "description", "id",
+      "last_activity_at", "result", "started_at", "user", 
+      "state", "state_css_class"])
+
+  return {
+    Render: function(data) {
+      data.state_css_class = ""
+      if (data.state != "done") {
+        data.state_css_class = "task-problematic-table-row";  
+      }
+      return tmpl.Render(data);
+    }
+  };
+}
+
 </script>
+
+<style>
+.task-problematic-table-row { background: pink; }
+</style>
 `
