@@ -24,6 +24,7 @@ type InstanceGroup struct {
 	Name string
 	AZs  *[]string
 
+	Stemcell   interface{}
 	Properties interface{}
 
 	Consumes interface{}
