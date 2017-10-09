@@ -18,7 +18,13 @@ func (t LinesTable) Print() {
 	table := boshtbl.Table{
 		Content: "lines",
 
-		Header: []string{"Level", "Num", "Time", "Group", "Content"},
+		Header: []boshtbl.Header{
+			{Title: "Level"},
+			{Title: "Num"},
+			{Title: "Time"},
+			{Title: "Group"},
+			{Title: "Content"},
+		},
 
 		SortBy: []boshtbl.ColumnSort{
 			{Column: 1, Asc: true},

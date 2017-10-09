@@ -17,7 +17,12 @@ func (t GroupsTable) Print() {
 	table := boshtbl.Table{
 		Content: "groups",
 
-		Header: []string{"Started at", "Ended at", "Duration", "Name"},
+		Header: []boshtbl.Header{
+			{Title: "Started at"},
+			{Title: "Ended at"},
+			{Title: "Duration"},
+			{Title: "Name"},
+		},
 
 		SortBy: []boshtbl.ColumnSort{
 			{Column: 0, Asc: true},
