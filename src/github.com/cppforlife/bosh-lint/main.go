@@ -12,6 +12,7 @@ import (
 	boshlogfile "github.com/cloudfoundry/bosh-utils/logger/file"
 	boshsys "github.com/cloudfoundry/bosh-utils/system"
 
+	boshcmd "github.com/cloudfoundry/bosh-cli/cmd"
 	bilog "github.com/cloudfoundry/bosh-cli/logger"
 	boshui "github.com/cloudfoundry/bosh-cli/ui"
 	boshuifmt "github.com/cloudfoundry/bosh-cli/ui/fmt"
@@ -25,7 +26,7 @@ func main() {
 	ui := boshui.NewConfUI(logger)
 	defer ui.Flush()
 
-	cmdFactory := bcmd.NewFactory(bcmd.NewBasicDeps(ui, logger))
+	cmdFactory := bcmd.NewFactory(boshcmd.NewBasicDeps(ui, logger))
 
 	cmd, err := cmdFactory.New(os.Args[1:])
 	if err != nil {

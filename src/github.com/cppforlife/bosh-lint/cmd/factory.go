@@ -7,14 +7,15 @@ import (
 	"strings"
 
 	// Should only be imported here to avoid leaking use of goflags through project
+	boshcmd "github.com/cloudfoundry/bosh-cli/cmd"
 	goflags "github.com/jessevdk/go-flags"
 )
 
 type Factory struct {
-	deps BasicDeps
+	deps boshcmd.BasicDeps
 }
 
-func NewFactory(deps BasicDeps) Factory {
+func NewFactory(deps boshcmd.BasicDeps) Factory {
 	return Factory{deps: deps}
 }
 
