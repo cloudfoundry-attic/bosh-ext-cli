@@ -72,7 +72,7 @@ func (c Cmd) Execute() (cmdErr error) {
 		return NewWebCmd(deps.CmdRunner, deps.UI, deps.Logger).Run(*opts)
 
 	case *MessageOpts:
-		deps.UI.PrintBlock(opts.Message)
+		deps.UI.PrintBlock([]byte(opts.Message))
 		return nil
 
 	default:
