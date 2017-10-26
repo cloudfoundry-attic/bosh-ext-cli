@@ -13,10 +13,10 @@ type Cmd struct {
 	BoshOpts BoshOpts
 	Opts     interface{}
 
-	deps BasicDeps
+	deps boshcmd.BasicDeps
 }
 
-func NewCmd(boshOpts BoshOpts, opts interface{}, deps BasicDeps) Cmd {
+func NewCmd(boshOpts BoshOpts, opts interface{}, deps boshcmd.BasicDeps) Cmd {
 	return Cmd{boshOpts, opts, deps}
 }
 
@@ -72,7 +72,7 @@ func (c Cmd) Execute() (cmdErr error) {
 		return NewWebCmd(deps.CmdRunner, deps.UI, deps.Logger).Run(*opts)
 
 	case *MessageOpts:
-		deps.UI.PrintBlock(opts.Message)
+		deps.UI.PrintBlock([]byte(opts.Message))
 		return nil
 
 	default:
@@ -108,11 +108,11 @@ func (c Cmd) releaseProviders() (boshrel.Provider, boshreldir.Provider) {
 	releaseIndexReporter := boshui.NewReleaseIndexReporter(c.deps.UI)
 
 	releaseProvider := boshrel.NewProvider(
-		c.deps.CmdRunner, c.deps.Compressor, c.deps.SHA1Calc, c.deps.FS, c.deps.Logger)
+		c.deps.CmdRunner, c.deps.Compressor, c.deps.DigestCalculator, c.deps.FS, c.deps.Logger)
 
 	releaseDirProvider := boshreldir.NewProvider(
 		indexReporter, releaseIndexReporter, blobsReporter, releaseProvider,
-		c.deps.SHA1Calc, c.deps.CmdRunner, c.deps.UUIDGen, c.deps.Time, c.deps.FS, c.deps.Logger)
+		c.deps.DigestCalculator, c.deps.CmdRunner, c.deps.UUIDGen, c.deps.Time, c.deps.FS, c.deps.DigestCreationAlgorithms, c.deps.Logger)
 
 	return releaseProvider, releaseDirProvider
 }

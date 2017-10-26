@@ -41,7 +41,7 @@ func (t ChecksTable) printChecks() {
 			{Column: 0, Asc: true},
 		},
 
-		Header: []string{"Purpose"},
+		Header: []boshtbl.Header{{Title: "Purpose"}},
 	}
 
 	for purpose, _ := range uniqPurposes {
@@ -62,7 +62,10 @@ func (t ChecksTable) printChecksWithContext() {
 			{Column: 1, Asc: true},
 		},
 
-		Header: []string{"Purpose", "Context"},
+		Header: []boshtbl.Header{
+			{Title: "Purpose"},
+			{Title: "Context"},
+		},
 	}
 
 	for _, desc := range t.Descriptions {
@@ -84,7 +87,11 @@ func (t ChecksTable) printSuggestions() {
 			{Column: 1, Asc: true},
 		},
 
-		Header: []string{"Problem", "Context", "Resolution"},
+		Header: []boshtbl.Header{
+			{Title: "Problem"},
+			{Title: "Context"},
+			{Title: "Resolution"},
+		},
 	}
 
 	for _, sug := range t.Suggestions {
