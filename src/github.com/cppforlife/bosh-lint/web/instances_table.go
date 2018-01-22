@@ -2,7 +2,7 @@ package web
 
 const instancesTable string = `
 <table id="instance-tmpl" class="tmpl">
-  <tr class="instance-table-row">
+  <tr class="instance-table-row {process_state_css_class}">
     <td class="instance">
       <a href="#" data-query="instance" data-value="{instance}">{instance}</a>
     </td>
@@ -25,7 +25,7 @@ const instancesTable string = `
 </table>
 
 <table id="instance-process-tmpl" class="tmpl">
-  <tr class="instance-table-row">
+  <tr class="instance-table-row {process_state_css_class}">
     <td class="instance"></td>
     <td class="process">{process}</td>
     <td class="process_state">{process_state}</td>
@@ -66,12 +66,17 @@ function InstanceRowTmpl() {
   var instance = Tmpl($("#instance-tmpl").html(), [
     "agent_id", "az", "bootstrap", "disk_cids", "ignore", "index",
     "instance", "ips", "process_state", "resurrection_paused", "state",
-    "vm_cid", "vm_type"]);
+    "vm_cid", "vm_type", "process_state_css_class"]);
 
-  var process = Tmpl($("#instance-process-tmpl").html(), ["process", "process_state"]);
+  var process = Tmpl($("#instance-process-tmpl").html(), [
+    "process", "process_state", "process_state_css_class"]);
 
   return {
     Render: function(data) {
+      data.process_state_css_class = "";
+      if (data.process_state != "running") {
+        data.process_state_css_class = "instance-problematic-table-row"
+      }
       if (data.process && data.process.length > 0) {
         return process.Render(data)
       }
@@ -81,4 +86,8 @@ function InstanceRowTmpl() {
 }
 
 </script>
+
+<style>
+.instance-problematic-table-row { background: #ffe5ea; }
+</style>
 `
