@@ -50,3 +50,5 @@ $ out/bosh-lint web
   - reload events
   - output for currently running tasks
   - bosh task (errored task) -> no error
+- debug-task
+  - columns
