@@ -6,9 +6,23 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
+	"github.com/cloudfoundry/bosh-cli/crypto/fakes"
 	. "github.com/cloudfoundry/bosh-cli/release/resource"
 	fakeres "github.com/cloudfoundry/bosh-cli/release/resource/resourcefakes"
+	boshcrypto "github.com/cloudfoundry/bosh-utils/crypto"
+	fakesfs "github.com/cloudfoundry/bosh-utils/system/fakes"
 )
+
+type duplicateError struct {
+}
+
+func (de duplicateError) Error() string {
+	return "error"
+}
+
+func (de duplicateError) IsDuplicate() bool {
+	return true
+}
 
 var _ = Describe("NewResource", func() {
 	var (
@@ -42,9 +56,9 @@ var _ = Describe("NewResource", func() {
 		})
 	})
 
-	Describe("ArchiveSHA1", func() {
+	Describe("ArchiveDigest", func() {
 		It("panics before building", func() {
-			Expect(func() { resource.ArchiveSHA1() }).To(Panic())
+			Expect(func() { resource.ArchiveDigest() }).To(Panic())
 		})
 	})
 
@@ -57,7 +71,7 @@ var _ = Describe("NewResource", func() {
 			Expect(resource.Build(devIndex, finalIndex)).ToNot(HaveOccurred())
 
 			Expect(resource.ArchivePath()).To(Equal("/found"))
-			Expect(resource.ArchiveSHA1()).To(Equal("sha1"))
+			Expect(resource.ArchiveDigest()).To(Equal("sha1"))
 		})
 
 		It("returns error when dev index check fails", func() {
@@ -78,7 +92,7 @@ var _ = Describe("NewResource", func() {
 			Expect(resource.Build(devIndex, finalIndex)).ToNot(HaveOccurred())
 
 			Expect(resource.ArchivePath()).To(Equal("/found"))
-			Expect(resource.ArchiveSHA1()).To(Equal("sha1"))
+			Expect(resource.ArchiveDigest()).To(Equal("sha1"))
 		})
 
 		It("returns error when final index check fails", func() {
@@ -113,14 +127,31 @@ var _ = Describe("NewResource", func() {
 			Expect(err.Error()).To(ContainSubstring("fake-err"))
 		})
 
-		It("returns error when dev index addition fails of newly built archive", func() {
-			archive.BuildReturns("/built", "built-sha1", nil)
+		Context("when adding an index fails", func() {
+			Context("when a duplicate error occurs", func() {
+				It("attempts to find and attach", func() {
+					devIndex.FindReturnsOnCall(1, "/found", "sha1", nil)
+					archive.BuildReturns("/built", "built-sha1", nil)
+					devIndex.AddReturns("", "", duplicateError{})
 
-			devIndex.AddReturns("", "", errors.New("fake-err"))
+					err := resource.Build(devIndex, finalIndex)
+					Expect(err).NotTo(HaveOccurred())
 
-			err := resource.Build(devIndex, finalIndex)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("fake-err"))
+					Expect(devIndex.FindCallCount()).To(Equal(2))
+				})
+			})
+
+			Context("when any other error occurs", func() {
+				It("returns error", func() {
+					archive.BuildReturns("/built", "built-sha1", nil)
+
+					devIndex.AddReturns("", "", errors.New("fake-err"))
+
+					err := resource.Build(devIndex, finalIndex)
+					Expect(err).To(HaveOccurred())
+					Expect(err.Error()).To(ContainSubstring("fake-err"))
+				})
+			})
 		})
 	})
 
@@ -137,7 +168,7 @@ var _ = Describe("NewResource", func() {
 			Expect(resource.Finalize(finalIndex)).ToNot(HaveOccurred())
 			Expect(finalIndex.AddCallCount()).To(Equal(0))
 			Expect(resource.ArchivePath()).To(Equal("/found"))
-			Expect(resource.ArchiveSHA1()).To(Equal("found-sha1"))
+			Expect(resource.ArchiveDigest()).To(Equal("found-sha1"))
 		})
 
 		It("returns error when final index check fails", func() {
@@ -176,14 +207,33 @@ var _ = Describe("NewResource", func() {
 			Expect(sha1).To(Equal("found-sha1"))
 		})
 
-		It("returns error when final index addition fails", func() {
-			buildBeforeFinalizing()
+		Context("when adding an index fails", func() {
+			Context("when a duplicate error occurs", func() {
+				It("calls finalize again", func() {
+					buildBeforeFinalizing()
 
-			finalIndex.AddReturns("", "", errors.New("fake-err"))
+					finalIndex.AddReturnsOnCall(0, "", "", duplicateError{})
+					finalIndex.FindReturnsOnCall(1, "/found-now", "found-sha1", nil)
 
-			err := resource.Finalize(finalIndex)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("fake-err"))
+					err := resource.Finalize(finalIndex)
+					Expect(err).NotTo(HaveOccurred())
+
+					Expect(finalIndex.FindCallCount()).To(Equal(2))
+					Expect(finalIndex.AddCallCount()).To(Equal(1))
+				})
+			})
+
+			Context("when final index addition fails", func() {
+				It("returns an error", func() {
+					buildBeforeFinalizing()
+
+					finalIndex.AddReturns("", "", errors.New("fake-err"))
+
+					err := resource.Finalize(finalIndex)
+					Expect(err).To(HaveOccurred())
+					Expect(err.Error()).To(ContainSubstring("fake-err"))
+				})
+			})
 		})
 	})
 })
@@ -218,9 +268,9 @@ var _ = Describe("NewExistingResource", func() {
 		})
 	})
 
-	Describe("ArchiveSHA1", func() {
+	Describe("ArchiveDigest", func() {
 		It("returns sha1", func() {
-			Expect(resource.ArchiveSHA1()).To(Equal("sha1"))
+			Expect(resource.ArchiveDigest()).To(Equal("sha1"))
 		})
 	})
 
@@ -234,7 +284,7 @@ var _ = Describe("NewExistingResource", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(resource.ArchivePath()).To(Equal("/found"))
-			Expect(resource.ArchiveSHA1()).To(Equal("found-sha1"))
+			Expect(resource.ArchiveDigest()).To(Equal("found-sha1"))
 		})
 
 		It("returns error when dev index check fails", func() {
@@ -256,7 +306,7 @@ var _ = Describe("NewExistingResource", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(resource.ArchivePath()).To(Equal("/found"))
-			Expect(resource.ArchiveSHA1()).To(Equal("found-sha1"))
+			Expect(resource.ArchiveDigest()).To(Equal("found-sha1"))
 		})
 
 		It("returns error when final index check fails", func() {
@@ -340,12 +390,26 @@ var _ = Describe("NewResourceWithBuiltArchive", func() {
 	var (
 		devIndex, finalIndex *fakeres.FakeArchiveIndex
 		resource             Resource
+		filePathName         string
+		filePathNameSha1     string
+		fakeFs               *fakesfs.FakeFileSystem
 	)
 
 	BeforeEach(func() {
 		devIndex = &fakeres.FakeArchiveIndex{}
 		finalIndex = &fakeres.FakeArchiveIndex{}
-		resource = NewResourceWithBuiltArchive("name", "fp", "path", "sha1")
+
+		fakeFs = fakesfs.NewFakeFileSystem()
+		file, err := fakeFs.TempFile("path")
+		Expect(err).ToNot(HaveOccurred())
+
+		fakeFs.RegisterOpenFile(file.Name(), &fakesfs.FakeFile{
+			Contents: []byte("hello world"),
+		})
+
+		filePathName = file.Name()
+		filePathNameSha1 = "2aae6c35c94fcfb415dbe95f408b9ce91ee846ed"
+		resource = NewResourceWithBuiltArchive("name", "fp", filePathName, filePathNameSha1)
 	})
 
 	Describe("Name", func() {
@@ -362,13 +426,59 @@ var _ = Describe("NewResourceWithBuiltArchive", func() {
 
 	Describe("ArchivePath", func() {
 		It("returns path", func() {
-			Expect(resource.ArchivePath()).To(Equal("path"))
+			Expect(resource.ArchivePath()).To(Equal(filePathName))
 		})
 	})
 
-	Describe("ArchiveSHA1", func() {
+	Describe("ArchiveDigest", func() {
 		It("returns sha1", func() {
-			Expect(resource.ArchiveSHA1()).To(Equal("sha1"))
+			Expect(resource.ArchiveDigest()).To(Equal(filePathNameSha1))
+		})
+	})
+
+	Describe("RehashWithCalculator", func() {
+		Context("Given a sha256 calculator", func() {
+			var fakeDigestCalculator *fakes.FakeDigestCalculator
+
+			BeforeEach(func() {
+				fakeDigestCalculator = fakes.NewFakeDigestCalculator()
+				fakeDigestCalculator.SetCalculateBehavior(map[string]fakes.CalculateInput{
+					filePathName: {DigestStr: "sha256:new_resource_sha"},
+				})
+			})
+
+			Context("Given a resource with a valid sha128", func() {
+				It("A copy of a resource with sha256", func() {
+					newSha256Resource, err := resource.RehashWithCalculator(fakeDigestCalculator, boshcrypto.ArchiveDigestFilePathReader(fakeFs))
+					Expect(err).ToNot(HaveOccurred())
+
+					Expect(newSha256Resource.ArchiveDigest()).To(Equal("sha256:new_resource_sha"))
+				})
+			})
+
+			Context("Given a resource with an invalid sha128", func() {
+				BeforeEach(func() {
+					resource = NewResourceWithBuiltArchive("name", "fp", filePathName, "bad")
+				})
+
+				It("an error should occur", func() {
+					_, err := resource.RehashWithCalculator(fakeDigestCalculator, boshcrypto.ArchiveDigestFilePathReader(fakeFs))
+					Expect(err).To(HaveOccurred())
+					Expect(err.Error()).To(ContainSubstring("Expected stream to have digest"))
+				})
+			})
+
+			Context("Given an invalid archive digest", func() {
+				BeforeEach(func() {
+					resource = NewResourceWithBuiltArchive("name", "fp", filePathName, "")
+				})
+
+				It("should return an error", func() {
+					_, err := resource.RehashWithCalculator(fakeDigestCalculator, boshcrypto.ArchiveDigestFilePathReader(fakeFs))
+					Expect(err).To(HaveOccurred())
+					Expect(err.Error()).To(ContainSubstring("No digest algorithm found. Supported algorithms"))
+				})
+			})
 		})
 	})
 
@@ -408,8 +518,8 @@ var _ = Describe("NewResourceWithBuiltArchive", func() {
 			name, fp, path, sha1 := finalIndex.AddArgsForCall(0)
 			Expect(name).To(Equal("name"))
 			Expect(fp).To(Equal("fp"))
-			Expect(path).To(Equal("path"))
-			Expect(sha1).To(Equal("sha1"))
+			Expect(path).To(Equal(filePathName))
+			Expect(sha1).To(Equal(filePathNameSha1))
 		})
 
 		It("returns error when final index addition fails", func() {

@@ -109,6 +109,8 @@ func (c UploadReleaseCmd) uploadFile(opts UploadReleaseOpts) error {
 		}
 	}
 
+	defer release.CleanUp()
+
 	return c.uploadRelease(release, opts)
 }
 
@@ -128,6 +130,8 @@ func (c UploadReleaseCmd) uploadRelease(release boshrel.Release, opts UploadRele
 		return err
 	}
 
+	defer c.fs.RemoveAll(path)
+
 	file, err := c.releaseArchiveFactory(path).File()
 	if err != nil {
 		return bosherr.WrapErrorf(err, "Opening release")
@@ -141,6 +145,7 @@ func (c UploadReleaseCmd) uploadIfNecessary(opts UploadReleaseOpts, uploadFunc f
 	if err != nil || !necessary {
 		return err
 	}
+
 	return uploadFunc(opts)
 }
 
@@ -151,13 +156,18 @@ func (c UploadReleaseCmd) needToUpload(opts UploadReleaseOpts) (bool, error) {
 
 	version := semver.Version(opts.Version).AsString()
 
-	found, err := c.director.HasRelease(opts.Name, version)
+	found, err := c.director.HasRelease(opts.Name, version, opts.Stemcell)
 	if err != nil {
 		return true, err
 	}
 
 	if found {
-		c.ui.PrintLinef("Release '%s/%s' already exists.", opts.Name, version)
+		if opts.Stemcell.IsProvided() {
+			c.ui.PrintLinef("Release '%s/%s' for stemcell '%s' already exists.", opts.Name, version, opts.Stemcell)
+		} else {
+			c.ui.PrintLinef("Release '%s/%s' already exists.", opts.Name, version)
+		}
+
 		return false, nil
 	}
 

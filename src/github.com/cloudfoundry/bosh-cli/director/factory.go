@@ -6,11 +6,11 @@ import (
 	"net/http"
 	"net/url"
 
-	bosherr "github.com/cloudfoundry/bosh-utils/errors"
-	boshhttp "github.com/cloudfoundry/bosh-utils/http"
-	boshhttpclient "github.com/cloudfoundry/bosh-utils/httpclient"
-	boshlog "github.com/cloudfoundry/bosh-utils/logger"
 	"time"
+
+	bosherr "github.com/cloudfoundry/bosh-utils/errors"
+	"github.com/cloudfoundry/bosh-utils/httpclient"
+	boshlog "github.com/cloudfoundry/bosh-utils/logger"
 )
 
 type Factory struct {
@@ -25,7 +25,7 @@ func NewFactory(logger boshlog.Logger) Factory {
 	}
 }
 
-func (f Factory) New(config Config, taskReporter TaskReporter, fileReporter FileReporter) (Director, error) {
+func (f Factory) New(config FactoryConfig, taskReporter TaskReporter, fileReporter FileReporter) (Director, error) {
 	err := config.Validate()
 	if err != nil {
 		return DirectorImpl{}, bosherr.WrapErrorf(
@@ -40,7 +40,7 @@ func (f Factory) New(config Config, taskReporter TaskReporter, fileReporter File
 	return DirectorImpl{client: client}, nil
 }
 
-func (f Factory) httpClient(config Config, taskReporter TaskReporter, fileReporter FileReporter) (Client, error) {
+func (f Factory) httpClient(config FactoryConfig, taskReporter TaskReporter, fileReporter FileReporter) (Client, error) {
 	certPool, err := config.CACertPool()
 	if err != nil {
 		return Client{}, err
@@ -52,7 +52,7 @@ func (f Factory) httpClient(config Config, taskReporter TaskReporter, fileReport
 		f.logger.Debug(f.logTag, "Using custom root CAs")
 	}
 
-	rawClient := boshhttpclient.CreateDefaultClient(certPool)
+	rawClient := httpclient.CreateDefaultClient(certPool)
 	authAdjustment := NewAuthRequestAdjustment(
 		config.TokenFunc, config.Client, config.ClientSecret)
 	rawClient.CheckRedirect = func(req *http.Request, via []*http.Request) error {
@@ -69,17 +69,18 @@ func (f Factory) httpClient(config Config, taskReporter TaskReporter, fileReport
 
 		req.URL.Host = net.JoinHostPort(config.Host, fmt.Sprintf("%d", config.Port))
 
-		req.Header.Del("Referer")
+		clearHeaders(req)
+		clearBody(req)
 
 		return nil
 	}
 
-	retryClient := boshhttp.NewNetworkSafeRetryClient(rawClient, 5, 500*time.Millisecond, f.logger)
+	retryClient := httpclient.NewNetworkSafeRetryClient(rawClient, 5, 500*time.Millisecond, f.logger)
 
 	authedClient := NewAdjustableClient(retryClient, authAdjustment)
 
-	httpOpts := boshhttpclient.Opts{NoRedactUrlQuery: true}
-	httpClient := boshhttpclient.NewHTTPClientOpts(authedClient, f.logger, httpOpts)
+	httpOpts := httpclient.Opts{NoRedactUrlQuery: true}
+	httpClient := httpclient.NewHTTPClientOpts(authedClient, f.logger, httpOpts)
 
 	endpoint := url.URL{
 		Scheme: "https",
@@ -87,4 +88,16 @@ func (f Factory) httpClient(config Config, taskReporter TaskReporter, fileReport
 	}
 
 	return NewClient(endpoint.String(), httpClient, taskReporter, fileReporter, f.logger), nil
+}
+
+func clearBody(req *http.Request) {
+	req.Body = nil
+}
+
+func clearHeaders(req *http.Request) {
+	authValue := req.Header.Get("Authorization")
+	req.Header = make(map[string][]string)
+	if authValue != "" {
+		req.Header.Add("Authorization", authValue)
+	}
 }

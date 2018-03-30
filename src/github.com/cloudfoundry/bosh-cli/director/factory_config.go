@@ -2,16 +2,16 @@ package director
 
 import (
 	"crypto/x509"
-	"encoding/pem"
 	gonet "net"
 	gourl "net/url"
 	"strconv"
 	"strings"
 
+	"github.com/cloudfoundry/bosh-utils/crypto"
 	bosherr "github.com/cloudfoundry/bosh-utils/errors"
 )
 
-type Config struct {
+type FactoryConfig struct {
 	Host string
 	Port int
 
@@ -24,14 +24,14 @@ type Config struct {
 	TokenFunc func(bool) (string, error)
 }
 
-func NewConfigFromURL(url string) (Config, error) {
+func NewConfigFromURL(url string) (FactoryConfig, error) {
 	if len(url) == 0 {
-		return Config{}, bosherr.Error("Expected non-empty Director URL")
+		return FactoryConfig{}, bosherr.Error("Expected non-empty Director URL")
 	}
 
 	parsedURL, err := gourl.Parse(url)
 	if err != nil {
-		return Config{}, bosherr.WrapErrorf(err, "Parsing Director URL '%s'", url)
+		return FactoryConfig{}, bosherr.WrapErrorf(err, "Parsing Director URL '%s'", url)
 	}
 
 	host := parsedURL.Host
@@ -46,25 +46,25 @@ func NewConfigFromURL(url string) (Config, error) {
 
 		host, portStr, err = gonet.SplitHostPort(host)
 		if err != nil {
-			return Config{}, bosherr.WrapErrorf(
+			return FactoryConfig{}, bosherr.WrapErrorf(
 				err, "Extracting host/port from URL '%s'", parsedURL.Host)
 		}
 
 		port, err = strconv.Atoi(portStr)
 		if err != nil {
-			return Config{}, bosherr.WrapErrorf(
+			return FactoryConfig{}, bosherr.WrapErrorf(
 				err, "Extracting port from URL '%s'", parsedURL.Host)
 		}
 	}
 
 	if len(host) == 0 {
-		return Config{}, bosherr.Errorf("Expected to extract host from URL '%s'", url)
+		return FactoryConfig{}, bosherr.Errorf("Expected to extract host from URL '%s'", url)
 	}
 
-	return Config{Host: host, Port: port}, nil
+	return FactoryConfig{Host: host, Port: port}, nil
 }
 
-func (c Config) Validate() error {
+func (c FactoryConfig) Validate() error {
 	if len(c.Host) == 0 {
 		return bosherr.Error("Missing 'Host'")
 	}
@@ -82,28 +82,10 @@ func (c Config) Validate() error {
 	return nil
 }
 
-func (c Config) CACertPool() (*x509.CertPool, error) {
+func (c FactoryConfig) CACertPool() (*x509.CertPool, error) {
 	if len(c.CACert) == 0 {
 		return nil, nil
 	}
 
-	certPool := x509.NewCertPool()
-
-	block, _ := pem.Decode([]byte(c.CACert))
-	if block == nil {
-		return nil, bosherr.Error("Parsing CA certificate: Missing PEM block")
-	}
-
-	if block.Type != "CERTIFICATE" || len(block.Headers) != 0 {
-		return nil, bosherr.Error("Parsing CA certificate: Not a certificate")
-	}
-
-	cert, err := x509.ParseCertificate(block.Bytes)
-	if err != nil {
-		return nil, bosherr.WrapError(err, "Parsing CA certificate")
-	}
-
-	certPool.AddCert(cert)
-
-	return certPool, nil
+	return crypto.CertPoolFromPEM([]byte(c.CACert))
 }

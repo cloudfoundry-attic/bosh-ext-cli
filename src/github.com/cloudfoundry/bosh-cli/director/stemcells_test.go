@@ -179,6 +179,79 @@ var _ = Describe("Director", func() {
 		})
 	})
 
+	Describe("MatchesStemcell", func() {
+		It("returns true for stemcells that need upload", func() {
+			server.AppendHandlers(
+				ghttp.CombineHandlers(
+					ghttp.VerifyRequest("POST", "/stemcell_uploads"),
+					ghttp.VerifyBasicAuth("username", "password"),
+					ghttp.VerifyJSON(`{"stemcell": {"name": "name", "version": "ver"}}`),
+					ghttp.RespondWith(http.StatusOK, `{"needed": true}`),
+				),
+			)
+
+			submission := StemcellInfo{
+				Name: "name", Version: "ver",
+			}
+			needed, supported, err := director.StemcellNeedsUpload(submission)
+			Expect(supported).To(BeTrue())
+			Expect(err).ToNot(HaveOccurred())
+			Expect(needed).To(BeTrue())
+		})
+
+		It("returns false when no stemcell upload is needed", func() {
+			server.AppendHandlers(
+				ghttp.CombineHandlers(
+					ghttp.VerifyRequest("POST", "/stemcell_uploads"),
+					ghttp.VerifyBasicAuth("username", "password"),
+					ghttp.VerifyJSON(`{"stemcell": {"name": "name", "version": "ver"}}`),
+					ghttp.RespondWith(http.StatusOK, `{"needed": false}`),
+				),
+			)
+
+			submission := StemcellInfo{
+				Name: "name", Version: "ver",
+			}
+			needed, supported, err := director.StemcellNeedsUpload(submission)
+			Expect(supported).To(BeTrue())
+			Expect(err).ToNot(HaveOccurred())
+			Expect(needed).To(BeFalse())
+		})
+
+		It("returns 'not supported' if director returns 404", func() {
+			server.AppendHandlers(
+				ghttp.CombineHandlers(
+					ghttp.VerifyRequest("POST", "/stemcell_uploads"),
+					ghttp.VerifyBasicAuth("username", "password"),
+					ghttp.RespondWith(http.StatusNotFound, ``),
+				),
+			)
+
+			submission := StemcellInfo{
+				Name: "name", Version: "ver",
+			}
+			_, supported, _ := director.StemcellNeedsUpload(submission)
+			Expect(supported).To(Equal(false))
+		})
+
+		It("promotes any other error", func() {
+			server.AppendHandlers(
+				ghttp.CombineHandlers(
+					ghttp.VerifyRequest("POST", "/stemcell_uploads"),
+					ghttp.VerifyBasicAuth("username", "password"),
+					ghttp.RespondWith(http.StatusInternalServerError, ``),
+				),
+			)
+
+			submission := StemcellInfo{
+				Name: "name", Version: "ver",
+			}
+			_, supported, err := director.StemcellNeedsUpload(submission)
+			Expect(err).To(HaveOccurred())
+			Expect(supported).To(BeTrue())
+		})
+	})
+
 	Describe("UploadStemcellURL", func() {
 		It("uploads stemcell by URL", func() {
 			ConfigureTaskResult(

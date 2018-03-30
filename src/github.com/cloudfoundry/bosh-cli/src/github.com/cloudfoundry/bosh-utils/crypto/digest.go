@@ -3,8 +3,12 @@ package crypto
 import (
 	"fmt"
 	"io"
+	"strings"
+
+	"os"
 
 	bosherr "github.com/cloudfoundry/bosh-utils/errors"
+	boshsys "github.com/cloudfoundry/bosh-utils/system"
 )
 
 type digestImpl struct {
@@ -15,7 +19,7 @@ type digestImpl struct {
 func NewDigest(algorithm Algorithm, digest string) digestImpl {
 	return digestImpl{
 		algorithm: algorithm,
-		digest:    digest,
+		digest:    strings.TrimPrefix(digest, algorithm.Name()+":"),
 	}
 }
 
@@ -40,4 +44,15 @@ func (c digestImpl) Verify(reader io.Reader) error {
 	}
 
 	return nil
+}
+
+func (m digestImpl) VerifyFilePath(filePath string, fs boshsys.FileSystem) error {
+	file, err := fs.OpenFile(filePath, os.O_RDONLY, 0)
+	if err != nil {
+		return bosherr.WrapErrorf(err, "Calculating digest of '%s'", filePath)
+	}
+	defer func() {
+		_ = file.Close()
+	}()
+	return m.Verify(file)
 }

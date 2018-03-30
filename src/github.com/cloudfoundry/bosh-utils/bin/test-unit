@@ -3,4 +3,4 @@
 set -e
 
 echo -e "\n Testing packages..."
-ginkgo -r $race -trace -skipPackage="vendor" $@
+ginkgo -r -race -trace -skipPackage="vendor" $@

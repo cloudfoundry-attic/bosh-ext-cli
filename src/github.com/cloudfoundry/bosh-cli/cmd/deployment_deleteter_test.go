@@ -7,7 +7,6 @@ import (
 
 	mock_httpagent "github.com/cloudfoundry/bosh-agent/agentclient/http/mocks"
 	bosherr "github.com/cloudfoundry/bosh-utils/errors"
-	fakebihttpclient "github.com/cloudfoundry/bosh-utils/httpclient/fakes"
 	boshlog "github.com/cloudfoundry/bosh-utils/logger"
 	biproperty "github.com/cloudfoundry/bosh-utils/property"
 	fakesys "github.com/cloudfoundry/bosh-utils/system/fakes"
@@ -24,7 +23,6 @@ import (
 	fakecmd "github.com/cloudfoundry/bosh-cli/cmd/cmdfakes"
 	biconfig "github.com/cloudfoundry/bosh-cli/config"
 	bicpirel "github.com/cloudfoundry/bosh-cli/cpi/release"
-	fakebicrypto "github.com/cloudfoundry/bosh-cli/crypto/fakes"
 	mock_deployment "github.com/cloudfoundry/bosh-cli/deployment/mocks"
 	boshtpl "github.com/cloudfoundry/bosh-cli/director/template"
 	biinstall "github.com/cloudfoundry/bosh-cli/installation"
@@ -94,6 +92,26 @@ var _ = Describe("DeploymentDeleter", func() {
 			mbusURL = "http://fake-mbus-user:fake-mbus-password@fake-mbus-endpoint"
 		)
 
+		var certificate = `-----BEGIN CERTIFICATE-----
+MIIC+TCCAeGgAwIBAgIQLzf5Fs3v+Dblm+CKQFxiKTANBgkqhkiG9w0BAQsFADAm
+MQwwCgYDVQQGEwNVU0ExFjAUBgNVBAoTDUNsb3VkIEZvdW5kcnkwHhcNMTcwNTE2
+MTUzNTI4WhcNMTgwNTE2MTUzNTI4WjAmMQwwCgYDVQQGEwNVU0ExFjAUBgNVBAoT
+DUNsb3VkIEZvdW5kcnkwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQC+
+4E0QJMOpQwbHACvrZ4FleP4/DMFvYUBySfKzDOgd99Nm8LdXuJcI1SYHJ3sV+mh0
++cQmRt8U2A/lw7bNU6JdM0fWHa/2nGjSBKWgPzba68NdsmwjqUjLatKpr1yvd384
+PJJKC7NrxwvChgB8ui84T4SrXHCioYMDEDIqLGmHJHMKnzQ17nu7ECO4e6QuCfnH
+RDs7dTjomTAiFuF4fh4SPgEDMGaCE5HZr4t3gvc9n4UftpcCpi+Jh+neRiWx+v37
+ZAYf2kp3wWtYDlgWk06cZzHZZ9uYZFwHDNHdDKHxGGvAh2Rm6rpPF2oA6OEyx6BH
+85/STCgSMCnV1Wkd+1yPAgMBAAGjIzAhMA4GA1UdDwEB/wQEAwIBBjAPBgNVHRMB
+Af8EBTADAQH/MA0GCSqGSIb3DQEBCwUAA4IBAQBGvGggx3IM4KCMpVDSv9zFKX4K
+IuCRQ6VFab3sgnlelMFaMj3+8baJ/YMko8PP1wVfUviVgKuiZO8tqL00Yo4s1WKp
+x3MLIG4eBX9pj0ZVRa3kpcF2Wvg6WhrzUzONf7pfuz/9avl77o4aSt4TwyCvM4Iu
+gJ7quVQKcfQcAVwuwWRrZXyhjhHaVKoPP5yRS+ESVTl70J5HBh6B7laooxf1yVAW
+8NJK1iQ1Pw2x3ABBo1cSMcTQ3Hk1ZWThJ7oPul2+QyzvOjIjiEPBstyzEPaxPG4I
+nH9ttalAwSLBsobVaK8mmiAdtAdx+CmHWrB4UNxCPYasrt5A6a9A9SiQ2dLd
+-----END CERTIFICATE-----
+`
+
 		var writeDeploymentManifest = func() {
 			fs.WriteFileString(deploymentManifestPath, `---
 name: test-release
@@ -107,6 +125,26 @@ cloud_provider:
     name: fake-cpi-release-job-name
     release: fake-cpi-release-name
   mbus: http://fake-mbus-user:fake-mbus-password@fake-mbus-endpoint
+  cert:
+    ca: |
+      -----BEGIN CERTIFICATE-----
+      MIIC+TCCAeGgAwIBAgIQLzf5Fs3v+Dblm+CKQFxiKTANBgkqhkiG9w0BAQsFADAm
+      MQwwCgYDVQQGEwNVU0ExFjAUBgNVBAoTDUNsb3VkIEZvdW5kcnkwHhcNMTcwNTE2
+      MTUzNTI4WhcNMTgwNTE2MTUzNTI4WjAmMQwwCgYDVQQGEwNVU0ExFjAUBgNVBAoT
+      DUNsb3VkIEZvdW5kcnkwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQC+
+      4E0QJMOpQwbHACvrZ4FleP4/DMFvYUBySfKzDOgd99Nm8LdXuJcI1SYHJ3sV+mh0
+      +cQmRt8U2A/lw7bNU6JdM0fWHa/2nGjSBKWgPzba68NdsmwjqUjLatKpr1yvd384
+      PJJKC7NrxwvChgB8ui84T4SrXHCioYMDEDIqLGmHJHMKnzQ17nu7ECO4e6QuCfnH
+      RDs7dTjomTAiFuF4fh4SPgEDMGaCE5HZr4t3gvc9n4UftpcCpi+Jh+neRiWx+v37
+      ZAYf2kp3wWtYDlgWk06cZzHZZ9uYZFwHDNHdDKHxGGvAh2Rm6rpPF2oA6OEyx6BH
+      85/STCgSMCnV1Wkd+1yPAgMBAAGjIzAhMA4GA1UdDwEB/wQEAwIBBjAPBgNVHRMB
+      Af8EBTADAQH/MA0GCSqGSIb3DQEBCwUAA4IBAQBGvGggx3IM4KCMpVDSv9zFKX4K
+      IuCRQ6VFab3sgnlelMFaMj3+8baJ/YMko8PP1wVfUviVgKuiZO8tqL00Yo4s1WKp
+      x3MLIG4eBX9pj0ZVRa3kpcF2Wvg6WhrzUzONf7pfuz/9avl77o4aSt4TwyCvM4Iu
+      gJ7quVQKcfQcAVwuwWRrZXyhjhHaVKoPP5yRS+ESVTl70J5HBh6B7laooxf1yVAW
+      8NJK1iQ1Pw2x3ABBo1cSMcTQ3Hk1ZWThJ7oPul2+QyzvOjIjiEPBstyzEPaxPG4I
+      nH9ttalAwSLBsobVaK8mmiAdtAdx+CmHWrB4UNxCPYasrt5A6a9A9SiQ2dLd
+      -----END CERTIFICATE-----
 `)
 		}
 
@@ -148,6 +186,9 @@ cloud_provider:
 				},
 				Mbus:       mbusURL,
 				Properties: biproperty.Map{},
+				Cert: biinstallmanifest.Certificate{
+					CA: certificate,
+				},
 			}
 
 			target := biinstall.NewTarget(filepath.Join("fake-install-dir", "fake-installation-id"))
@@ -166,10 +207,8 @@ cloud_provider:
 			releaseSetParser := birelsetmanifest.NewParser(fs, logger, releaseSetValidator)
 			installationValidator := biinstallmanifest.NewValidator(logger)
 			installationParser := biinstallmanifest.NewParser(fs, fakeUUIDGenerator, logger, installationValidator)
-			fakeHTTPClient := fakebihttpclient.NewFakeHTTPClient()
 			tarballCache := bitarball.NewCache("fake-base-path", fs, logger)
-			fakeSHA1Calculator := fakebicrypto.NewFakeSha1Calculator()
-			tarballProvider := bitarball.NewProvider(tarballCache, fs, fakeHTTPClient, fakeSHA1Calculator, 1, 0, logger)
+			tarballProvider := bitarball.NewProvider(tarballCache, fs, nil, 1, 0, logger)
 			deploymentStateService := biconfig.NewFileSystemDeploymentStateService(fs, fakeUUIDGenerator, logger, biconfig.DeploymentStatePath(deploymentManifestPath, ""))
 
 			cpiInstaller := bicpirel.CpiInstaller{
@@ -239,7 +278,7 @@ cloud_provider:
 
 		var expectValidationInstallationDeletionEvents = func() {
 			Expect(fakeUI.Said).To(Equal([]string{
-				"Deployment state: '/deployment-dir/fake-deployment-manifest-state.json'\n",
+				"Deployment state: '" + filepath.Join("/", "deployment-dir", "fake-deployment-manifest-state.json") + "'\n",
 			}))
 
 			Expect(fakeStage.PerformCalls).To(Equal([]*fakebiui.PerformCall{
@@ -310,9 +349,13 @@ cloud_provider:
 			mockAgentClientFactory = mock_httpagent.NewMockAgentClientFactory(mockCtrl)
 			mockAgentClient = mock_agentclient.NewMockAgentClient(mockCtrl)
 
-			mockAgentClientFactory.EXPECT().NewAgentClient(gomock.Any(), gomock.Any()).Return(mockAgentClient).AnyTimes()
-
 			directorID = "fake-uuid-0"
+
+			mockAgentClientFactory.EXPECT().NewAgentClient(
+				directorID,
+				"http://fake-mbus-user:fake-mbus-password@fake-mbus-endpoint",
+				certificate,
+			).Return(mockAgentClient, nil).AnyTimes()
 
 			writeDeploymentManifest()
 			writeCPIReleaseTarball()
@@ -338,7 +381,7 @@ cloud_provider:
 					Expect(err).ToNot(HaveOccurred())
 
 					Expect(fakeUI.Said).To(Equal([]string{
-						"Deployment state: '/deployment-dir/fake-deployment-manifest-state.json'\n",
+						"Deployment state: '" + filepath.Join("/", "deployment-dir", "fake-deployment-manifest-state.json") + "'\n",
 						"No deployment state file found.\n",
 					}))
 				})
@@ -346,8 +389,6 @@ cloud_provider:
 
 			Context("when the deployment has been deployed", func() {
 				BeforeEach(func() {
-					directorID = "fake-director-id"
-
 					// create deployment manifest yaml file
 					setupDeploymentStateService.Save(biconfig.DeploymentState{
 						DirectorID: directorID,
@@ -367,7 +408,7 @@ cloud_provider:
 					expectDeleteAndCleanup(true)
 					err := newDeploymentDeleter().DeleteDeployment(fakeStage)
 					Expect(err).NotTo(HaveOccurred())
-					Expect(fs.TempRootPath).To(Equal("fake-install-dir/fake-installation-id/tmp"))
+					Expect(fs.TempRootPath).To(Equal(filepath.Join("fake-install-dir", "fake-installation-id", "tmp")))
 				})
 
 				It("extracts & install CPI release tarball", func() {
@@ -451,6 +492,9 @@ cloud_provider:
 					},
 					Mbus:       mbusURL,
 					Properties: biproperty.Map{},
+					Cert: biinstallmanifest.Certificate{
+						CA: certificate,
+					},
 				}
 
 				target := biinstall.NewTarget(filepath.Join("fake-install-dir", "fake-installation-id"))

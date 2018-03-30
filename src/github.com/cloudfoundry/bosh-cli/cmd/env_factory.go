@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"os"
-	gopath "path"
+	"path/filepath"
 	"time"
 
 	"github.com/cppforlife/go-patch/patch"
@@ -33,7 +33,7 @@ import (
 	bistemcell "github.com/cloudfoundry/bosh-cli/stemcell"
 	bitemplate "github.com/cloudfoundry/bosh-cli/templatescompiler"
 	bitemplateerb "github.com/cloudfoundry/bosh-cli/templatescompiler/erbrenderer"
-	bihttpclient "github.com/cloudfoundry/bosh-utils/httpclient"
+	"github.com/cloudfoundry/bosh-utils/httpclient"
 )
 
 type envFactory struct {
@@ -78,17 +78,17 @@ func NewEnvFactory(deps BasicDeps, manifestPath string, statePath string, manife
 	releaseJobResolver := bideplrel.NewJobResolver(f.releaseManager)
 
 	// todo expand path?
-	workspaceRootPath := gopath.Join(os.Getenv("HOME"), ".bosh")
+	workspaceRootPath := filepath.Join(os.Getenv("HOME"), ".bosh")
 
 	{
-		tarballCacheBasePath := gopath.Join(workspaceRootPath, "downloads")
+		tarballCacheBasePath := filepath.Join(workspaceRootPath, "downloads")
 		tarballCache := bitarball.NewCache(tarballCacheBasePath, deps.FS, deps.Logger)
-		httpClient := bihttpclient.NewHTTPClient(bitarball.HTTPClient, deps.Logger)
+		httpClient := httpclient.NewHTTPClient(httpclient.CreateDefaultClient(nil), deps.Logger)
 		tarballProvider := bitarball.NewProvider(
-			tarballCache, deps.FS, httpClient, deps.SHA1Calc, 3, 500*time.Millisecond, deps.Logger)
+			tarballCache, deps.FS, httpClient, 3, 500*time.Millisecond, deps.Logger)
 
 		releaseProvider := boshrel.NewProvider(
-			deps.CmdRunner, deps.Compressor, deps.SHA1Calc, deps.FS, deps.Logger)
+			deps.CmdRunner, deps.Compressor, deps.DigestCalculator, deps.FS, deps.Logger)
 
 		f.releaseFetcher = boshinst.NewReleaseFetcher(
 			tarballProvider,
@@ -112,7 +112,7 @@ func NewEnvFactory(deps BasicDeps, manifestPath string, statePath string, manife
 		registryServer := biregistry.NewServerManager(deps.Logger)
 		installerFactory := boshinst.NewInstallerFactory(
 			deps.UI, deps.CmdRunner, deps.Compressor, releaseJobResolver,
-			deps.UUIDGen, registryServer, deps.Logger, deps.FS)
+			deps.UUIDGen, registryServer, deps.Logger, deps.FS, deps.DigestCreationAlgorithms)
 
 		f.cpiInstaller = bicpirel.CpiInstaller{
 			ReleaseManager:   f.releaseManager,
@@ -122,7 +122,7 @@ func NewEnvFactory(deps BasicDeps, manifestPath string, statePath string, manife
 	}
 
 	f.targetProvider = boshinst.NewTargetProvider(
-		f.deploymentStateService, deps.UUIDGen, gopath.Join(workspaceRootPath, "installations"))
+		f.deploymentStateService, deps.UUIDGen, filepath.Join(workspaceRootPath, "installations"))
 
 	{
 		diskRepo := biconfig.NewDiskRepo(f.deploymentStateService, deps.UUIDGen)
@@ -156,7 +156,7 @@ func NewEnvFactory(deps BasicDeps, manifestPath string, statePath string, manife
 			bistatepkg.NewCompiledPackageRepo(biindex.NewInMemoryIndex()),
 			releaseJobResolver,
 			bitemplate.NewJobListRenderer(jobRenderer, deps.Logger),
-			bitemplate.NewRenderedJobListCompressor(deps.FS, deps.Compressor, deps.SHA1Calc, deps.Logger),
+			bitemplate.NewRenderedJobListCompressor(deps.FS, deps.Compressor, deps.DigestCalculator, deps.Logger),
 			deps.Logger,
 		)
 

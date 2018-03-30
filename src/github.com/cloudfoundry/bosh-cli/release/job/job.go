@@ -5,8 +5,10 @@ import (
 	biproperty "github.com/cloudfoundry/bosh-utils/property"
 	boshsys "github.com/cloudfoundry/bosh-utils/system"
 
+	"github.com/cloudfoundry/bosh-cli/crypto"
 	boshpkg "github.com/cloudfoundry/bosh-cli/release/pkg"
 	. "github.com/cloudfoundry/bosh-cli/release/resource"
+	crypto2 "github.com/cloudfoundry/bosh-utils/crypto"
 )
 
 type ByName []*Job
@@ -43,8 +45,8 @@ func NewExtractedJob(resource Resource, extractedPath string, fs boshsys.FileSys
 func (j Job) Name() string        { return j.resource.Name() }
 func (j Job) Fingerprint() string { return j.resource.Fingerprint() }
 
-func (j *Job) ArchivePath() string { return j.resource.ArchivePath() }
-func (j *Job) ArchiveSHA1() string { return j.resource.ArchiveSHA1() }
+func (j *Job) ArchivePath() string   { return j.resource.ArchivePath() }
+func (j *Job) ArchiveDigest() string { return j.resource.ArchiveDigest() }
 
 func (j *Job) Build(dev, final ArchiveIndex) error { return j.resource.Build(dev, final) }
 func (j *Job) Finalize(final ArchiveIndex) error   { return j.resource.Finalize(final) }
@@ -67,6 +69,21 @@ func (j *Job) AttachPackages(packages []*boshpkg.Package) error {
 	}
 
 	return j.AttachCompilablePackages(coms)
+}
+
+func (j *Job) RehashWithCalculator(calculator crypto.DigestCalculator, archiveFilePathReader crypto2.ArchiveDigestFilePathReader) (*Job, error) {
+	newResource, err := j.resource.RehashWithCalculator(calculator, archiveFilePathReader)
+
+	return &Job{
+		resource:     newResource,
+		Templates:    j.Templates,
+		PackageNames: j.PackageNames,
+		Packages:     j.Packages,
+		Properties:   j.Properties,
+
+		extractedPath: j.extractedPath,
+		fs:            j.fs,
+	}, err
 }
 
 func (j *Job) AttachCompilablePackages(packages []boshpkg.Compilable) error {

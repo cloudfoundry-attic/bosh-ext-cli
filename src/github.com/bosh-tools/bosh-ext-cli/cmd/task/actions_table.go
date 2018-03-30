@@ -17,7 +17,14 @@ func (t ActionsTable) Print() {
 	table := boshtbl.Table{
 		Content: "actions",
 
-		Header: []string{"Started at", "Ended at", "Duration", "Group", "Content"},
+		Header: []boshtbl.Header{
+			boshtbl.NewHeader("ID"),
+			boshtbl.NewHeader("Started at"),
+			boshtbl.NewHeader("Ended at"),
+			boshtbl.NewHeader("Duration"),
+			boshtbl.NewHeader("Group"),
+			boshtbl.NewHeader("Content"),
+		},
 	}
 
 	if t.SortBy == "duration" {

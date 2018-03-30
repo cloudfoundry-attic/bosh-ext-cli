@@ -1,5 +1,10 @@
 package resource
 
+import (
+	"github.com/cloudfoundry/bosh-cli/crypto"
+	crypto2 "github.com/cloudfoundry/bosh-utils/crypto"
+)
+
 //go:generate counterfeiter . Archive
 
 type Archive interface {
@@ -7,7 +12,14 @@ type Archive interface {
 	Build(expectedFp string) (string, string, error)
 }
 
-type ArchiveFunc func([]File, []File, []string) Archive
+type ArchiveFunc func(args ArchiveFactoryArgs) Archive
+
+type ArchiveFactoryArgs struct {
+	Files          []File
+	PrepFiles      []File
+	Chunks         []string
+	FollowSymlinks bool
+}
 
 //go:generate counterfeiter . ArchiveIndex
 
@@ -23,10 +35,12 @@ type Resource interface {
 	Fingerprint() string
 
 	ArchivePath() string
-	ArchiveSHA1() string
+	ArchiveDigest() string
 
 	Build(dev, final ArchiveIndex) error
 	Finalize(final ArchiveIndex) error
+
+	RehashWithCalculator(calculator crypto.DigestCalculator, archiveFilePathReader crypto2.ArchiveDigestFilePathReader) (Resource, error)
 }
 
 //go:generate counterfeiter . Fingerprinter

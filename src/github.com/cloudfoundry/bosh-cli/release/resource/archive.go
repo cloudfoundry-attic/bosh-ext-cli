@@ -2,8 +2,7 @@ package resource
 
 import (
 	"os"
-
-	gopath "path"
+	"path/filepath"
 
 	bosherr "github.com/cloudfoundry/bosh-utils/errors"
 	boshcmd "github.com/cloudfoundry/bosh-utils/fileutil"
@@ -17,36 +16,36 @@ type ArchiveImpl struct {
 	prepFiles        []File
 	additionalChunks []string
 	releaseDirPath   string
+	followSymlinks   bool
 
-	fingerprinter Fingerprinter
-	compressor    boshcmd.Compressor
-	sha1calc      bicrypto.SHA1Calculator
-	cmdRunner     boshsys.CmdRunner
-	fs            boshsys.FileSystem
+	fingerprinter    Fingerprinter
+	compressor       boshcmd.Compressor
+	digestCalculator bicrypto.DigestCalculator
+	cmdRunner        boshsys.CmdRunner
+	fs               boshsys.FileSystem
 }
 
 func NewArchiveImpl(
-	files []File,
-	prepFiles []File,
-	additionalChunks []string,
+	args ArchiveFactoryArgs,
 	releaseDirPath string,
 	fingerprinter Fingerprinter,
 	compressor boshcmd.Compressor,
-	sha1calc bicrypto.SHA1Calculator,
+	digestCalculator bicrypto.DigestCalculator,
 	cmdRunner boshsys.CmdRunner,
 	fs boshsys.FileSystem,
 ) ArchiveImpl {
 	return ArchiveImpl{
-		files:            files,
-		prepFiles:        prepFiles,
-		additionalChunks: additionalChunks,
+		files:            args.Files,
+		prepFiles:        args.PrepFiles,
+		additionalChunks: args.Chunks,
+		followSymlinks:   args.FollowSymlinks,
 		releaseDirPath:   releaseDirPath,
 
-		fingerprinter: fingerprinter,
-		compressor:    compressor,
-		sha1calc:      sha1calc,
-		cmdRunner:     cmdRunner,
-		fs:            fs,
+		fingerprinter:    fingerprinter,
+		compressor:       compressor,
+		digestCalculator: digestCalculator,
+		cmdRunner:        cmdRunner,
+		fs:               fs,
 	}
 }
 
@@ -96,7 +95,8 @@ func (a ArchiveImpl) Build(expectedFp string) (string, string, error) {
 		return "", "", bosherr.WrapError(err, "Compressing staging directory")
 	}
 
-	archiveSHA1, err := a.sha1calc.Calculate(archivePath)
+	//generation of digest string
+	archiveSHA1, err := a.digestCalculator.Calculate(archivePath)
 	if err != nil {
 		_ = a.compressor.CleanUp(archivePath)
 		return "", "", bosherr.WrapError(err, "Calculating archive SHA1")
@@ -128,7 +128,7 @@ func (a ArchiveImpl) runPrepScripts(stagingDir string) error {
 		}
 
 		// Arguably we should not remove the prep script
-		err = a.fs.RemoveAll(gopath.Join(stagingDir, prepFile.RelativePath))
+		err = a.fs.RemoveAll(filepath.Join(stagingDir, prepFile.RelativePath))
 		if err != nil {
 			return bosherr.WrapError(
 				err, "Removing prep scrpt from staging directory")
@@ -139,20 +139,35 @@ func (a ArchiveImpl) runPrepScripts(stagingDir string) error {
 }
 
 func (a ArchiveImpl) copyFile(sourceFile File, stagingDir string) error {
-	dstPath := gopath.Join(stagingDir, sourceFile.RelativePath)
-	dstDir := gopath.Dir(dstPath)
+	dstPath := filepath.Join(stagingDir, sourceFile.RelativePath)
+	dstDir := filepath.Dir(dstPath)
 
 	err := a.fs.MkdirAll(dstDir, os.ModePerm)
 	if err != nil {
 		return err
 	}
 
-	sourceDirStat, err := a.fs.Lstat(gopath.Dir(sourceFile.Path))
+	sourceDirStat, err := a.fs.Lstat(filepath.Dir(sourceFile.Path))
 	if err != nil {
 		return err
 	}
 
-	err = a.fs.Chmod(dstDir, sourceDirStat.Mode())
+	sourceDirMode := sourceDirStat.Mode()
+
+	isSourceDirSymlink := sourceDirStat.Mode()&os.ModeSymlink != 0
+	if isSourceDirSymlink && a.followSymlinks {
+		symlinkTarget, err := filepath.EvalSymlinks(filepath.Dir(sourceFile.Path))
+		if err != nil {
+			return err
+		}
+		statResult, err := a.fs.Lstat(symlinkTarget)
+		if err != nil {
+			return err
+		}
+		sourceDirMode = statResult.Mode()
+	}
+
+	err = a.fs.Chmod(dstDir, sourceDirMode)
 	if err != nil {
 		return err
 	}
@@ -162,23 +177,34 @@ func (a ArchiveImpl) copyFile(sourceFile File, stagingDir string) error {
 		return err
 	}
 
-	if sourceFileStat.Mode()&os.ModeSymlink != 0 {
-		symlinkTarget, err := a.fs.Readlink(sourceFile.Path)
-		if err != nil {
-			return err
-		}
+	isSymlink := sourceFileStat.Mode()&os.ModeSymlink != 0
+	sourceFilePath := sourceFile.Path
 
-		return a.fs.Symlink(symlinkTarget, dstPath)
-	} else {
-		err = a.fs.CopyFile(sourceFile.Path, dstPath)
-		if err != nil {
-			return err
-		}
+	if isSymlink {
+		if a.followSymlinks {
+			symlinkTarget, err := a.fs.ReadAndFollowLink(sourceFilePath)
+			if err != nil {
+				return err
+			}
+			sourceFilePath = symlinkTarget
+		} else {
+			symlinkTarget, err := a.fs.Readlink(sourceFilePath)
+			if err != nil {
+				return err
+			}
 
-		// Be very explicit about changing permissions for copied file
-		// Only pay attention to whether the source file is executable
-		return a.fs.Chmod(dstPath, getFilePerms(sourceFileStat))
+			return a.fs.Symlink(symlinkTarget, dstPath)
+		}
 	}
+
+	err = a.fs.CopyFile(sourceFilePath, dstPath)
+	if err != nil {
+		return err
+	}
+
+	// Be very explicit about changing permissions for copied file
+	// Only pay attention to whether the source file is executable
+	return a.fs.Chmod(dstPath, getFilePerms(sourceFileStat))
 }
 
 func getFilePerms(stat os.FileInfo) os.FileMode {
@@ -197,5 +223,5 @@ func (a ArchiveImpl) buildStagingArchive(stagingDir string) Archive {
 	}
 
 	// Initialize with bare minimum deps so that fingerprinting can be performed
-	return NewArchiveImpl(stagingFiles, nil, a.additionalChunks, "", a.fingerprinter, nil, nil, nil, nil)
+	return NewArchiveImpl(ArchiveFactoryArgs{Files: stagingFiles, Chunks: a.additionalChunks}, "", a.fingerprinter, nil, nil, nil, nil)
 }

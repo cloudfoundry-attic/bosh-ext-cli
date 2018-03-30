@@ -24,6 +24,8 @@ func (c TasksCmd) Run(opts TasksOpts) error {
 	if opts.Recent != nil {
 		return c.printTable(c.director.RecentTasks(*opts.Recent, filter))
 	}
+
+	filter.All = true
 	return c.printTable(c.director.CurrentTasks(filter))
 }
 
@@ -34,8 +36,17 @@ func (c TasksCmd) printTable(tasks []boshdir.Task, err error) error {
 
 	table := boshtbl.Table{
 		Content: "tasks",
-		Header:  []string{"#", "State", "Started At", "Last Activity At", "User", "Deployment", "Description", "Result"},
-		SortBy:  []boshtbl.ColumnSort{{Column: 0}},
+		Header: []boshtbl.Header{
+			boshtbl.NewHeader("ID"),
+			boshtbl.NewHeader("State"),
+			boshtbl.NewHeader("Started At"),
+			boshtbl.NewHeader("Last Activity At"),
+			boshtbl.NewHeader("User"),
+			boshtbl.NewHeader("Deployment"),
+			boshtbl.NewHeader("Description"),
+			boshtbl.NewHeader("Result"),
+		},
+		SortBy: []boshtbl.ColumnSort{{Column: 0}},
 	}
 
 	for _, t := range tasks {

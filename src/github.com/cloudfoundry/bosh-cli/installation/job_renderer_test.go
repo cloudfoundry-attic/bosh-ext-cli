@@ -109,7 +109,7 @@ var _ = Describe("JobRenderer", func() {
 		mockJobListRenderer.EXPECT().Render(releaseJobs, releaseJobProperties, jobProperties, globalProperties, deploymentName, address).Return(renderedJobList, nil).AnyTimes()
 
 		fakeCompressor.CompressFilesInDirTarballPath = "/fake-rendered-job-tarball-cpi.tgz"
-		multiDigest := boshcrypto.MustParseMultipleDigest("fake-rendered-job-tarball-sha1-cpi")
+		multiDigest := boshcrypto.MustParseMultipleDigest("fakerenderedjobtarballsha1cpi")
 		fakeBlobstore.CreateReturns("fake-rendered-job-tarball-blobstore-id-cpi", multiDigest, nil)
 	})
 
@@ -133,20 +133,12 @@ var _ = Describe("JobRenderer", func() {
 			Expect(fakeCompressor.CleanUpTarballPath).To(Equal("/fake-rendered-job-tarball-cpi.tgz"))
 		})
 
-		It("returns an error when looking up the SHA1 of the created blob", func() {
-			multiDigest := boshcrypto.MultipleDigest{}
-			fakeBlobstore.CreateReturns("fake-rendered-job-tarball-blobstore-id-cpi", multiDigest, nil)
-			_, err := renderer.RenderAndUploadFrom(manifest, releaseJobs, fakeStage)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("Looking up SHA1 from blob digest"))
-		})
-
 		It("returns rendered job refs", func() {
 			jobs, err := renderer.RenderAndUploadFrom(manifest, releaseJobs, fakeStage)
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(jobs).To(Equal([]installation.RenderedJobRef{
-				installation.NewRenderedJobRef("cpi", "fake-release-job-fingerprint", "fake-rendered-job-tarball-blobstore-id-cpi", "fake-rendered-job-tarball-sha1-cpi"),
+				installation.NewRenderedJobRef("cpi", "fake-release-job-fingerprint", "fake-rendered-job-tarball-blobstore-id-cpi", "fakerenderedjobtarballsha1cpi"),
 			}))
 		})
 

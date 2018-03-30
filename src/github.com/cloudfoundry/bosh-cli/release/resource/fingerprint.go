@@ -2,7 +2,8 @@ package resource
 
 import (
 	"os"
-	gopath "path"
+	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -13,12 +14,17 @@ import (
 )
 
 type FingerprinterImpl struct {
-	sha1calc bicrypto.SHA1Calculator
-	fs       boshsys.FileSystem
+	digestCalculator bicrypto.DigestCalculator
+	fs               boshsys.FileSystem
+	followSymlinks   bool
 }
 
-func NewFingerprinterImpl(sha1calc bicrypto.SHA1Calculator, fs boshsys.FileSystem) FingerprinterImpl {
-	return FingerprinterImpl{sha1calc: sha1calc, fs: fs}
+func NewFingerprinterImpl(digestCalculator bicrypto.DigestCalculator, fs boshsys.FileSystem, followSymlinks bool) FingerprinterImpl {
+	return FingerprinterImpl{
+		digestCalculator: digestCalculator,
+		fs:               fs,
+		followSymlinks:   followSymlinks,
+	}
 }
 
 func (f FingerprinterImpl) Calculate(files []File, additionalChunks []string) (string, error) {
@@ -47,7 +53,15 @@ func (f FingerprinterImpl) Calculate(files []File, additionalChunks []string) (s
 		chunks = append(chunks, strings.Join(sortedAdditionalChunks, ","))
 	}
 
-	return f.sha1calc.CalculateString(strings.Join(chunks, "")), nil
+	digestStr := f.digestCalculator.CalculateString(strings.Join(chunks, ""))
+	trimmedDigestStr := strings.TrimPrefix(digestStr, "sha256:")
+
+	validID := regexp.MustCompile(`^[0-9A-Za-z]+$`)
+	if !validID.MatchString(trimmedDigestStr) {
+		return "", bosherr.Errorf("Generated fingerprint contains unexpected characters '%s'", trimmedDigestStr)
+	}
+
+	return trimmedDigestStr, nil
 }
 
 // fingerprintPath currently works with:
@@ -61,7 +75,7 @@ func (f FingerprinterImpl) fingerprintPath(file File) (string, error) {
 	var result string
 
 	if file.UseBasename {
-		result += gopath.Base(file.Path)
+		result += filepath.Base(file.Path)
 	} else {
 		result += file.RelativePath
 	}
@@ -71,17 +85,29 @@ func (f FingerprinterImpl) fingerprintPath(file File) (string, error) {
 		return "", err
 	}
 
-	if fileInfo.Mode()&os.ModeSymlink != 0 {
+	isSymlink := fileInfo.Mode()&os.ModeSymlink != 0
+	targetFilePath := file.Path
+
+	if isSymlink && f.followSymlinks {
+		targetFilePath, err = f.fs.ReadAndFollowLink(file.Path)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	if isSymlink && !f.followSymlinks {
 		symlinkTarget, err := f.fs.Readlink(file.Path)
 		if err != nil {
 			return "", err
 		}
 
-		sha1 := f.sha1calc.CalculateString(symlinkTarget)
+		//generation of digest string
+		sha1 := f.digestCalculator.CalculateString(symlinkTarget)
 
 		result += sha1
-	} else if !fileInfo.IsDir() {
-		sha1, err := f.sha1calc.Calculate(file.Path)
+	} else {
+		//generation of digest string
+		sha1, err := f.digestCalculator.Calculate(targetFilePath)
 		if err != nil {
 			return "", err
 		}
@@ -100,7 +126,7 @@ func (f FingerprinterImpl) fingerprintPath(file File) (string, error) {
 
 		if fileInfo.IsDir() {
 			modeStr = "40755"
-		} else if fileInfo.Mode()&os.ModeSymlink != 0 {
+		} else if fileInfo.Mode()&os.ModeSymlink != 0 && !f.followSymlinks {
 			modeStr = "symlink"
 		} else if fileInfo.Mode()&0111 != 0 {
 			modeStr = "100755"

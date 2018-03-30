@@ -1,22 +1,14 @@
 package stemcell
 
 import (
-	"github.com/pivotal-golang/yaml"
 	"path/filepath"
+
+	"gopkg.in/yaml.v2"
 
 	bosherr "github.com/cloudfoundry/bosh-utils/errors"
 	boshcmd "github.com/cloudfoundry/bosh-utils/fileutil"
-	biproperty "github.com/cloudfoundry/bosh-utils/property"
 	boshsys "github.com/cloudfoundry/bosh-utils/system"
 )
-
-type manifest struct {
-	Name            string
-	Version         string
-	OS              string `yaml:"operating_system"`
-	SHA1            string
-	CloudProperties map[interface{}]interface{} `yaml:"cloud_properties"`
-}
 
 // Reader reads a stemcell tarball and returns a stemcell object containing
 // parsed information (e.g. version, name)
@@ -39,7 +31,7 @@ func (s reader) Read(stemcellTarballPath string, extractedPath string) (Extracte
 		return nil, bosherr.WrapErrorf(err, "Extracting stemcell from '%s' to '%s'", stemcellTarballPath, extractedPath)
 	}
 
-	var rawManifest manifest
+	var manifest Manifest
 	manifestPath := filepath.Join(extractedPath, "stemcell.MF")
 
 	manifestContents, err := s.fs.ReadFile(manifestPath)
@@ -47,31 +39,16 @@ func (s reader) Read(stemcellTarballPath string, extractedPath string) (Extracte
 		return nil, bosherr.WrapErrorf(err, "Reading stemcell manifest '%s'", manifestPath)
 	}
 
-	err = yaml.Unmarshal(manifestContents, &rawManifest)
+	err = yaml.Unmarshal(manifestContents, &manifest)
 	if err != nil {
 		return nil, bosherr.WrapErrorf(err, "Parsing stemcell manifest: %s", manifestContents)
 	}
 
-	manifest := Manifest{
-		Name:    rawManifest.Name,
-		Version: rawManifest.Version,
-		OS:      rawManifest.OS,
-		SHA1:    rawManifest.SHA1,
-	}
-
-	cloudProperties, err := biproperty.BuildMap(rawManifest.CloudProperties)
-	if err != nil {
-		return nil, bosherr.WrapErrorf(err, "Parsing stemcell cloud_properties: %#v", rawManifest.CloudProperties)
-	}
-	manifest.CloudProperties = cloudProperties
-
-	manifest.ImagePath = filepath.Join(extractedPath, "image")
-
 	stemcell := NewExtractedStemcell(
 		manifest,
 		extractedPath,
+		s.compressor,
 		s.fs,
 	)
-
 	return stemcell, nil
 }

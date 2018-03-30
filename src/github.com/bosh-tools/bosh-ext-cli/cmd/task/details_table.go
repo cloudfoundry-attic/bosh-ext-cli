@@ -16,7 +16,12 @@ func (t DetailsTable) Print() {
 	table := boshtbl.Table{
 		Content: "details",
 
-		Header: []string{"Director Version", "Task ID", "Lines", "Unknown Lines"},
+		Header: []boshtbl.Header{
+			boshtbl.NewHeader("Director Version"),
+			boshtbl.NewHeader("Task ID"),
+			boshtbl.NewHeader("Lines"),
+			boshtbl.NewHeader("Unknown Lines"),
+		},
 	}
 
 	table.Rows = append(table.Rows, []boshtbl.Value{

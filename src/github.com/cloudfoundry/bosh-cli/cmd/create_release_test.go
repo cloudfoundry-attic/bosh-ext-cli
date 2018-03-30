@@ -83,11 +83,20 @@ var _ = Describe("CreateReleaseCmd", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				Expect(ui.Tables[0]).To(Equal(boshtbl.Table{
-					Rows: [][]boshtbl.Value{
-						{boshtbl.NewValueString("Name"), boshtbl.NewValueString("rel")},
-						{boshtbl.NewValueString("Version"), boshtbl.NewValueString("ver")},
-						{boshtbl.NewValueString("Commit Hash"), boshtbl.NewValueString("commit")},
+					Header: []boshtbl.Header{
+						boshtbl.NewHeader("Name"),
+						boshtbl.NewHeader("Version"),
+						boshtbl.NewHeader("Commit Hash"),
 					},
+
+					Rows: [][]boshtbl.Value{
+						{
+							boshtbl.NewValueString("rel"),
+							boshtbl.NewValueString("ver"),
+							boshtbl.NewValueString("commit"),
+						},
+					},
+					Transpose: true,
 				}))
 			})
 
@@ -101,7 +110,7 @@ var _ = Describe("CreateReleaseCmd", func() {
 
 			Context("with tarball", func() {
 				BeforeEach(func() {
-					opts.Tarball = "/tarball-destination.tgz"
+					opts.Tarball = FileArg{ExpandedPath: "/tarball-destination.tgz"}
 				})
 
 				It("builds release and release archive based on manifest path", func() {
@@ -116,16 +125,66 @@ var _ = Describe("CreateReleaseCmd", func() {
 					Expect(err).ToNot(HaveOccurred())
 
 					Expect(ui.Tables[0]).To(Equal(boshtbl.Table{
-						Rows: [][]boshtbl.Value{
-							{boshtbl.NewValueString("Name"), boshtbl.NewValueString("rel")},
-							{boshtbl.NewValueString("Version"), boshtbl.NewValueString("ver")},
-							{boshtbl.NewValueString("Commit Hash"), boshtbl.NewValueString("commit")},
-							{boshtbl.NewValueString("Archive"), boshtbl.NewValueString("/tarball-destination.tgz")},
+						Header: []boshtbl.Header{
+							boshtbl.NewHeader("Name"),
+							boshtbl.NewHeader("Version"),
+							boshtbl.NewHeader("Commit Hash"),
+							boshtbl.NewHeader("Archive"),
 						},
+
+						Rows: [][]boshtbl.Value{
+							{
+								boshtbl.NewValueString("rel"),
+								boshtbl.NewValueString("ver"),
+								boshtbl.NewValueString("commit"),
+								boshtbl.NewValueString("/tarball-destination.tgz"),
+							},
+						},
+						Transpose: true,
 					}))
 
 					Expect(fakeFS.FileExists("/temp-tarball.tgz")).To(BeFalse())
+
 					content, err := fakeFS.ReadFileString("/tarball-destination.tgz")
+					Expect(err).ToNot(HaveOccurred())
+					Expect(content).To(Equal("release content blah"))
+				})
+
+				It("interpolates release archive destionation path with ((name)) and ((version))", func() {
+					opts.Tarball = FileArg{ExpandedPath: "/tarball-destination-((name))-((version)).tgz"}
+
+					fakeWriter.WriteStub = func(rel boshrel.Release, skipPkgs []string) (string, error) {
+						Expect(rel).To(Equal(release))
+
+						fakeFS.WriteFileString("/temp-tarball.tgz", "release content blah")
+						return "/temp-tarball.tgz", nil
+					}
+
+					err := act()
+					Expect(err).ToNot(HaveOccurred())
+
+					Expect(ui.Tables[0]).To(Equal(boshtbl.Table{
+						Header: []boshtbl.Header{
+							boshtbl.NewHeader("Name"),
+							boshtbl.NewHeader("Version"),
+							boshtbl.NewHeader("Commit Hash"),
+							boshtbl.NewHeader("Archive"),
+						},
+
+						Rows: [][]boshtbl.Value{
+							{
+								boshtbl.NewValueString("rel"),
+								boshtbl.NewValueString("ver"),
+								boshtbl.NewValueString("commit"),
+								boshtbl.NewValueString("/tarball-destination-rel-ver.tgz"),
+							},
+						},
+						Transpose: true,
+					}))
+
+					Expect(fakeFS.FileExists("/temp-tarball.tgz")).To(BeFalse())
+
+					content, err := fakeFS.ReadFileString("/tarball-destination-rel-ver.tgz")
 					Expect(err).ToNot(HaveOccurred())
 					Expect(content).To(Equal("release content blah"))
 				})
@@ -155,44 +214,6 @@ var _ = Describe("CreateReleaseCmd", func() {
 					Expect(err).To(HaveOccurred())
 					Expect(err.Error()).To(ContainSubstring("fake-err"))
 				})
-
-				Context("with a path that needs expanding", func() {
-					BeforeEach(func() {
-						opts.Tarball = "~/../tarball-destination.tgz"
-						fakeFS.ExpandPathExpanded = "/tarball-destination.tgz"
-					})
-
-					It("builds the tarball to the expanded path", func() {
-						fakeWriter.WriteStub = func(rel boshrel.Release, skipPkgs []string) (string, error) {
-							Expect(rel).To(Equal(release))
-
-							fakeFS.WriteFileString("/temp-tarball.tgz", "release content blah")
-							return "/temp-tarball.tgz", nil
-						}
-
-						err := act()
-						Expect(err).ToNot(HaveOccurred())
-
-						Expect(fakeFS.ExpandPathPath).To(Equal("~/../tarball-destination.tgz"))
-						Expect(fakeFS.FileExists("/temp-tarball.tgz")).To(BeFalse())
-						content, err := fakeFS.ReadFileString("/tarball-destination.tgz")
-						Expect(err).ToNot(HaveOccurred())
-						Expect(content).To(Equal("release content blah"))
-					})
-
-					Context("when expanding the path fails", func() {
-						BeforeEach(func() {
-							fakeFS.ExpandPathErr = errors.New("bad-expand-path")
-						})
-
-						It("returns the err", func() {
-							err := act()
-							Expect(err).To(HaveOccurred())
-
-							Expect(err.Error()).To(ContainSubstring("bad-expand-path"))
-						})
-					})
-				})
 			})
 		})
 
@@ -212,11 +233,19 @@ var _ = Describe("CreateReleaseCmd", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				Expect(ui.Tables[0]).To(Equal(boshtbl.Table{
-					Rows: [][]boshtbl.Value{
-						{boshtbl.NewValueString("Name"), boshtbl.NewValueString("default-rel-name")},
-						{boshtbl.NewValueString("Version"), boshtbl.NewValueString("next-dev+ver")},
-						{boshtbl.NewValueString("Commit Hash"), boshtbl.NewValueString("commit")},
+					Header: []boshtbl.Header{
+						boshtbl.NewHeader("Name"),
+						boshtbl.NewHeader("Version"),
+						boshtbl.NewHeader("Commit Hash"),
 					},
+					Rows: [][]boshtbl.Value{
+						{
+							boshtbl.NewValueString("default-rel-name"),
+							boshtbl.NewValueString("next-dev+ver"),
+							boshtbl.NewValueString("commit"),
+						},
+					},
+					Transpose: true,
 				}))
 			})
 
@@ -238,11 +267,19 @@ var _ = Describe("CreateReleaseCmd", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				Expect(ui.Tables[0]).To(Equal(boshtbl.Table{
-					Rows: [][]boshtbl.Value{
-						{boshtbl.NewValueString("Name"), boshtbl.NewValueString("custom-name")},
-						{boshtbl.NewValueString("Version"), boshtbl.NewValueString("custom-ver")},
-						{boshtbl.NewValueString("Commit Hash"), boshtbl.NewValueString("commit")},
+					Header: []boshtbl.Header{
+						boshtbl.NewHeader("Name"),
+						boshtbl.NewHeader("Version"),
+						boshtbl.NewHeader("Commit Hash"),
 					},
+					Rows: [][]boshtbl.Value{
+						{
+							boshtbl.NewValueString("custom-name"),
+							boshtbl.NewValueString("custom-ver"),
+							boshtbl.NewValueString("commit"),
+						},
+					},
+					Transpose: true,
 				}))
 			})
 
@@ -269,11 +306,19 @@ var _ = Describe("CreateReleaseCmd", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				Expect(ui.Tables[0]).To(Equal(boshtbl.Table{
-					Rows: [][]boshtbl.Value{
-						{boshtbl.NewValueString("Name"), boshtbl.NewValueString("default-rel-name")},
-						{boshtbl.NewValueString("Version"), boshtbl.NewValueString("ts-ver")},
-						{boshtbl.NewValueString("Commit Hash"), boshtbl.NewValueString("commit")},
+					Header: []boshtbl.Header{
+						boshtbl.NewHeader("Name"),
+						boshtbl.NewHeader("Version"),
+						boshtbl.NewHeader("Commit Hash"),
 					},
+					Rows: [][]boshtbl.Value{
+						{
+							boshtbl.NewValueString("default-rel-name"),
+							boshtbl.NewValueString("ts-ver"),
+							boshtbl.NewValueString("commit"),
+						},
+					},
+					Transpose: true,
 				}))
 			})
 
@@ -303,11 +348,19 @@ var _ = Describe("CreateReleaseCmd", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				Expect(ui.Tables[0]).To(Equal(boshtbl.Table{
-					Rows: [][]boshtbl.Value{
-						{boshtbl.NewValueString("Name"), boshtbl.NewValueString("default-rel-name")},
-						{boshtbl.NewValueString("Version"), boshtbl.NewValueString("next-final+ver")},
-						{boshtbl.NewValueString("Commit Hash"), boshtbl.NewValueString("commit")},
+					Header: []boshtbl.Header{
+						boshtbl.NewHeader("Name"),
+						boshtbl.NewHeader("Version"),
+						boshtbl.NewHeader("Commit Hash"),
 					},
+					Rows: [][]boshtbl.Value{
+						{
+							boshtbl.NewValueString("default-rel-name"),
+							boshtbl.NewValueString("next-final+ver"),
+							boshtbl.NewValueString("commit"),
+						},
+					},
+					Transpose: true,
 				}))
 			})
 
@@ -337,17 +390,25 @@ var _ = Describe("CreateReleaseCmd", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				Expect(ui.Tables[0]).To(Equal(boshtbl.Table{
-					Rows: [][]boshtbl.Value{
-						{boshtbl.NewValueString("Name"), boshtbl.NewValueString("default-rel-name")},
-						{boshtbl.NewValueString("Version"), boshtbl.NewValueString("custom-ver")},
-						{boshtbl.NewValueString("Commit Hash"), boshtbl.NewValueString("commit")},
+					Header: []boshtbl.Header{
+						boshtbl.NewHeader("Name"),
+						boshtbl.NewHeader("Version"),
+						boshtbl.NewHeader("Commit Hash"),
 					},
+					Rows: [][]boshtbl.Value{
+						{
+							boshtbl.NewValueString("default-rel-name"),
+							boshtbl.NewValueString("custom-ver"),
+							boshtbl.NewValueString("commit"),
+						},
+					},
+					Transpose: true,
 				}))
 			})
 
 			It("builds release and archive if building archive is requested", func() {
 				opts.Final = true
-				opts.Tarball = "/archive-path"
+				opts.Tarball = FileArg{ExpandedPath: "/archive-path"}
 
 				releaseDir.DefaultNameReturns("default-rel-name", nil)
 				releaseDir.NextDevVersionReturns(semver.MustNewVersionFromString("next-dev+ver"), nil)
@@ -371,12 +432,21 @@ var _ = Describe("CreateReleaseCmd", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				Expect(ui.Tables[0]).To(Equal(boshtbl.Table{
-					Rows: [][]boshtbl.Value{
-						{boshtbl.NewValueString("Name"), boshtbl.NewValueString("default-rel-name")},
-						{boshtbl.NewValueString("Version"), boshtbl.NewValueString("next-final+ver")},
-						{boshtbl.NewValueString("Commit Hash"), boshtbl.NewValueString("commit")},
-						{boshtbl.NewValueString("Archive"), boshtbl.NewValueString("/archive-path")},
+					Header: []boshtbl.Header{
+						boshtbl.NewHeader("Name"),
+						boshtbl.NewHeader("Version"),
+						boshtbl.NewHeader("Commit Hash"),
+						boshtbl.NewHeader("Archive"),
 					},
+					Rows: [][]boshtbl.Value{
+						{
+							boshtbl.NewValueString("default-rel-name"),
+							boshtbl.NewValueString("next-final+ver"),
+							boshtbl.NewValueString("commit"),
+							boshtbl.NewValueString("/archive-path"),
+						},
+					},
+					Transpose: true,
 				}))
 
 				Expect(fakeFS.FileExists("/temp-tarball.tgz")).To(BeFalse())
@@ -413,7 +483,7 @@ var _ = Describe("CreateReleaseCmd", func() {
 			})
 
 			It("returns error if building release archive fails", func() {
-				opts.Tarball = "/tarball/dest/path.tgz"
+				opts.Tarball = FileArg{ExpandedPath: "/tarball/dest/path.tgz"}
 
 				fakeWriter.WriteStub = func(rel boshrel.Release, skipPkgs []string) (string, error) {
 					return "", errors.New("fake-err")

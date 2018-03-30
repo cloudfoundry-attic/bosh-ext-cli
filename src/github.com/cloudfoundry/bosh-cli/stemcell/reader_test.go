@@ -2,7 +2,6 @@ package stemcell_test
 
 import (
 	"errors"
-
 	. "github.com/cloudfoundry/bosh-cli/stemcell"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -28,6 +27,10 @@ var _ = Describe("Reader", func() {
 ---
 name: fake-stemcell-name
 version: '2690'
+operating_system: ubuntu-trusty
+sha1: sha
+bosh_protocol: 1
+stemcell_formats: ['aws-raw']
 cloud_properties:
   infrastructure: aws
   ami:
@@ -48,9 +51,12 @@ cloud_properties:
 		Expect(err).ToNot(HaveOccurred())
 		expectedStemcell := NewExtractedStemcell(
 			Manifest{
-				Name:      "fake-stemcell-name",
-				Version:   "2690",
-				ImagePath: "fake-extracted-path/image",
+				Name:            "fake-stemcell-name",
+				Version:         "2690",
+				OS:              "ubuntu-trusty",
+				SHA1:            "sha",
+				BoshProtocol:    "1",
+				StemcellFormats: []string{"aws-raw"},
 				CloudProperties: biproperty.Map{
 					"infrastructure": "aws",
 					"ami": biproperty.Map{
@@ -59,8 +65,10 @@ cloud_properties:
 				},
 			},
 			"fake-extracted-path",
+			compressor,
 			fs,
 		)
+		Expect(stemcell.Manifest().CloudProperties).To(Equal(expectedStemcell.Manifest().CloudProperties))
 		Expect(stemcell).To(Equal(expectedStemcell))
 	})
 

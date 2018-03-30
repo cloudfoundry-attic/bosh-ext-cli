@@ -2,18 +2,26 @@ package patch
 
 import (
 	"fmt"
+
+	"gopkg.in/yaml.v2"
 )
 
 type ReplaceOp struct {
 	Path  Pointer
-	Value interface{}
+	Value interface{} // will be cloned using yaml library
 }
 
 func (op ReplaceOp) Apply(doc interface{}) (interface{}, error) {
+	// Ensure that value is not modified by future operations
+	clonedValue, err := op.cloneValue(op.Value)
+	if err != nil {
+		return nil, fmt.Errorf("ReplaceOp cloning value: %s", err)
+	}
+
 	tokens := op.Path.Tokens()
 
 	if len(tokens) == 1 {
-		return op.Value, nil
+		return clonedValue, nil
 	}
 
 	obj := doc
@@ -24,20 +32,24 @@ func (op ReplaceOp) Apply(doc interface{}) (interface{}, error) {
 
 		switch typedToken := token.(type) {
 		case IndexToken:
-			idx := typedToken.Index
-
 			typedObj, ok := obj.([]interface{})
 			if !ok {
 				return nil, newOpArrayMismatchTypeErr(tokens[:i+2], obj)
 			}
 
-			if idx >= len(typedObj) {
-				return nil, opMissingIndexErr{idx, typedObj}
-			}
-
 			if isLast {
-				typedObj[idx] = op.Value
+				idx, err := ArrayInsertion{Index: typedToken.Index, Modifiers: typedToken.Modifiers, Array: typedObj}.Concrete()
+				if err != nil {
+					return nil, err
+				}
+
+				prevUpdate(idx.Update(typedObj, clonedValue))
 			} else {
+				idx, err := ArrayIndex{Index: typedToken.Index, Modifiers: typedToken.Modifiers, Array: typedObj}.Concrete()
+				if err != nil {
+					return nil, err
+				}
+
 				obj = typedObj[idx]
 				prevUpdate = func(newObj interface{}) { typedObj[idx] = newObj }
 			}
@@ -49,7 +61,7 @@ func (op ReplaceOp) Apply(doc interface{}) (interface{}, error) {
 			}
 
 			if isLast {
-				prevUpdate(append(typedObj, op.Value))
+				prevUpdate(append(typedObj, clonedValue))
 			} else {
 				return nil, fmt.Errorf("Expected after last index token to be last in path '%s'", op.Path)
 			}
@@ -73,7 +85,7 @@ func (op ReplaceOp) Apply(doc interface{}) (interface{}, error) {
 
 			if typedToken.Optional && len(idxs) == 0 {
 				if isLast {
-					prevUpdate(append(typedObj, op.Value))
+					prevUpdate(append(typedObj, clonedValue))
 				} else {
 					obj = map[interface{}]interface{}{typedToken.Key: typedToken.Value}
 					prevUpdate(append(typedObj, obj))
@@ -84,11 +96,19 @@ func (op ReplaceOp) Apply(doc interface{}) (interface{}, error) {
 					return nil, opMultipleMatchingIndexErr{NewPointer(tokens[:i+2]), idxs}
 				}
 
-				idx := idxs[0]
-
 				if isLast {
-					typedObj[idx] = op.Value
+					idx, err := ArrayInsertion{Index: idxs[0], Modifiers: typedToken.Modifiers, Array: typedObj}.Concrete()
+					if err != nil {
+						return nil, err
+					}
+
+					prevUpdate(idx.Update(typedObj, clonedValue))
 				} else {
+					idx, err := ArrayIndex{Index: idxs[0], Modifiers: typedToken.Modifiers, Array: typedObj}.Concrete()
+					if err != nil {
+						return nil, err
+					}
+
 					obj = typedObj[idx]
 					// no need to change prevUpdate since matching item can only be a map
 				}
@@ -108,7 +128,7 @@ func (op ReplaceOp) Apply(doc interface{}) (interface{}, error) {
 			}
 
 			if isLast {
-				typedObj[typedToken.Key] = op.Value
+				typedObj[typedToken.Key] = clonedValue
 			} else {
 				prevUpdate = func(newObj interface{}) { typedObj[typedToken.Key] = newObj }
 
@@ -136,4 +156,24 @@ func (op ReplaceOp) Apply(doc interface{}) (interface{}, error) {
 	}
 
 	return doc, nil
+}
+
+func (ReplaceOp) cloneValue(in interface{}) (out interface{}, err error) {
+	defer func() {
+		if recoverVal := recover(); recoverVal != nil {
+			err = fmt.Errorf("Recovered: %s", recoverVal)
+		}
+	}()
+
+	bytes, err := yaml.Marshal(in)
+	if err != nil {
+		return nil, err
+	}
+
+	err = yaml.Unmarshal(bytes, &out)
+	if err != nil {
+		return nil, err
+	}
+
+	return out, nil
 }

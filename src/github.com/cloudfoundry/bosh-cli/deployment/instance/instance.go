@@ -99,11 +99,6 @@ func (i *instance) WaitUntilReady(
 			}
 			sshTunnel := i.sshTunnelFactory.NewSSHTunnel(sshTunnelOptions)
 			go sshTunnel.Start(sshReadyErrCh, sshErrCh)
-			defer func() {
-				if err := sshTunnel.Stop(); err != nil {
-					i.logger.Warn(i.logTag, "Failed to stop ssh tunnel: %s", err.Error())
-				}
-			}()
 
 			err := <-sshReadyErrCh
 			if err != nil {
@@ -208,7 +203,7 @@ func (i *instance) Delete(
 ) error {
 	vmExists, err := i.vm.Exists()
 	if err != nil {
-		return bosherr.WrapErrorf(err, "Checking existance of vm for instance '%s/%d'", i.jobName, i.id)
+		return bosherr.WrapErrorf(err, "Checking existence of vm for instance '%s/%d'", i.jobName, i.id)
 	}
 
 	if vmExists {

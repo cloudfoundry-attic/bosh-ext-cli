@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	osuser "os/user"
@@ -15,10 +16,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"io/ioutil"
-
 	. "github.com/cloudfoundry/bosh-utils/assert"
 	boshlog "github.com/cloudfoundry/bosh-utils/logger"
+	"github.com/cloudfoundry/bosh-utils/logger/loggerfakes"
 	. "github.com/cloudfoundry/bosh-utils/system"
 )
 
@@ -40,6 +40,18 @@ func readFile(file *os.File) string {
 }
 
 var _ = Describe("OS FileSystem", func() {
+	var TempDir string
+
+	BeforeEach(func() {
+		var err error
+		TempDir, err = ioutil.TempDir("", "bosh-utils-")
+		Expect(err).ToNot(HaveOccurred())
+	})
+
+	AfterEach(func() {
+		os.RemoveAll(TempDir)
+	})
+
 	It("home dir", func() {
 		superuser := "root"
 		expDir := "/root"
@@ -84,7 +96,7 @@ var _ = Describe("OS FileSystem", func() {
 
 	It("mkdir all", func() {
 		osFs := createOsFs()
-		tmpPath := os.TempDir()
+		tmpPath := TempDir
 		testPath := filepath.Join(tmpPath, "MkdirAllTestDir", "bar", "baz")
 		defer os.RemoveAll(filepath.Join(tmpPath, "MkdirAllTestDir"))
 
@@ -105,22 +117,10 @@ var _ = Describe("OS FileSystem", func() {
 		Expect(err).ToNot(HaveOccurred())
 	})
 
-	It("chown", func() {
-		osFs := createOsFs()
-		testPath := filepath.Join(os.TempDir(), "ChownTestDir")
-
-		err := os.Mkdir(testPath, os.FileMode(0700))
-		Expect(err).ToNot(HaveOccurred())
-		defer os.RemoveAll(testPath)
-
-		err = osFs.Chown(testPath, "garbage-foo")
-		Expect(err).To(HaveOccurred())
-	})
-
 	It("chmod", func() {
 		osFs := createOsFs()
-		testPath := filepath.Join(os.TempDir(), "ChmodTestDir")
-		compPath := filepath.Join(os.TempDir(), "Comparison")
+		testPath := filepath.Join(TempDir, "ChmodTestDir")
+		compPath := filepath.Join(TempDir, "Comparison")
 
 		_, err := os.Create(testPath)
 		Expect(err).ToNot(HaveOccurred())
@@ -155,7 +155,7 @@ var _ = Describe("OS FileSystem", func() {
 
 	It("opens file", func() {
 		osFs := createOsFs()
-		testPath := filepath.Join(os.TempDir(), "OpenFileTestFile")
+		testPath := filepath.Join(TempDir, "OpenFileTestFile")
 
 		file, err := osFs.OpenFile(testPath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, os.FileMode(0644))
 		defer os.Remove(testPath)
@@ -174,7 +174,7 @@ var _ = Describe("OS FileSystem", func() {
 	Describe("Stat", func() {
 		It("returns file info", func() {
 			osFs := createOsFs()
-			testPath := filepath.Join(os.TempDir(), "OpenFileTestFile")
+			testPath := filepath.Join(TempDir, "OpenFileTestFile")
 
 			file, err := osFs.OpenFile(testPath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
 			Expect(err).ToNot(HaveOccurred())
@@ -192,10 +192,10 @@ var _ = Describe("OS FileSystem", func() {
 		})
 	})
 
-	Context("the file already exists and is not write only", func() {
-		It("writes to file", func() {
+	Describe("ConvergeFileContents", func() {
+		It("converges file", func() {
 			osFs := createOsFs()
-			testPath := filepath.Join(os.TempDir(), "subDir", "ConvergeFileContentsTestFile")
+			testPath := filepath.Join(TempDir, "subDir", "ConvergeFileContentsTestFile")
 
 			if _, err := os.Stat(testPath); err == nil {
 				Expect(os.Remove(testPath)).To(Succeed())
@@ -208,8 +208,6 @@ var _ = Describe("OS FileSystem", func() {
 
 			file, err := os.Open(testPath)
 			Expect(err).ToNot(HaveOccurred())
-			defer file.Close()
-
 			Expect(readFile(file)).To(Equal("initial write"))
 
 			written, err = osFs.ConvergeFileContents(testPath, []byte("second write"))
@@ -224,21 +222,79 @@ var _ = Describe("OS FileSystem", func() {
 
 			file.Close()
 			file, err = os.Open(testPath)
+			defer file.Close()
 
 			written, err = osFs.ConvergeFileContents(testPath, []byte("second write"))
 			Expect(err).ToNot(HaveOccurred())
 			Expect(written).To(BeFalse())
 			Expect(readFile(file)).To(Equal("second write"))
+			file.Close()
+		})
+
+		It("does create file if dry run option is set", func() {
+			osFs := createOsFs()
+			testPath := filepath.Join(TempDir, "subDir", "ConvergeFileContentsTestFile")
+
+			if _, err := os.Stat(testPath); err == nil {
+				Expect(os.Remove(testPath)).To(Succeed())
+			}
+
+			written, err := osFs.ConvergeFileContents(testPath, []byte("initial write"), ConvergeFileContentsOpts{DryRun: true})
+			defer os.Remove(testPath)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(written).To(BeTrue())
+
+			Expect(osFs.FileExists(testPath)).To(BeFalse())
+		})
+
+		It("does not converge file if dry run is set", func() {
+			osFs := createOsFs()
+			testPath := filepath.Join(TempDir, "subDir", "ConvergeFileContentsTestFile")
+
+			if _, err := os.Stat(testPath); err == nil {
+				Expect(os.Remove(testPath)).To(Succeed())
+			}
+
+			written, err := osFs.ConvergeFileContents(testPath, []byte("initial write"))
+			defer os.Remove(testPath)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(written).To(BeTrue())
+
+			file, err := os.Open(testPath)
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(readFile(file)).To(Equal("initial write"))
+
+			written, err = osFs.ConvergeFileContents(testPath, []byte("second write"), ConvergeFileContentsOpts{DryRun: true})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(written).To(BeTrue())
+
+			file.Close()
+			file, err = os.Open(testPath)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(readFile(file)).To(Equal("initial write"))
+
+			// same length content
+			written, err = osFs.ConvergeFileContents(testPath, []byte("initial wNOTe"), ConvergeFileContentsOpts{DryRun: true})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(written).To(BeTrue())
+
+			file.Close()
+			file, err = os.Open(testPath)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(readFile(file)).To(Equal("initial write"))
+			file.Close()
 		})
 	})
 
 	Context("the file already exists and is write only", func() {
 		It("writes to file", func() {
 			osFs := createOsFs()
-			testPath := filepath.Join(os.TempDir(), "subDir", "ConvergeFileContentsTestFile")
+			testPath := filepath.Join(TempDir, "ConvergeFileContentsTestFile")
 
-			_, err := os.OpenFile(testPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.FileMode(0200))
+			f, err := os.OpenFile(testPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.FileMode(0200))
 			Expect(err).ToNot(HaveOccurred())
+			f.Close()
 			defer os.Remove(testPath)
 
 			err = osFs.WriteFile(testPath, []byte("test"))
@@ -246,42 +302,115 @@ var _ = Describe("OS FileSystem", func() {
 		})
 	})
 
-	Context("the file parent fir does not exist", func() {
+	Context("the file's parent dir does not exist", func() {
 		BeforeEach(func() {
-			err := os.RemoveAll(filepath.Join(os.TempDir(), "subDirNew"))
+			err := os.RemoveAll(filepath.Join(TempDir, "subDirNew"))
 			Expect(err).ToNot(HaveOccurred())
 		})
 
 		AfterEach(func() {
-			err := os.RemoveAll(filepath.Join(os.TempDir(), "subDirNew"))
+			err := os.RemoveAll(filepath.Join(TempDir, "subDirNew"))
 			Expect(err).ToNot(HaveOccurred())
 		})
 
 		It("writes to file", func() {
 			osFs := createOsFs()
 
-			testPath := filepath.Join(os.TempDir(), "subDirNew", "ConvergeFileContentsTestFile")
+			testPath := filepath.Join(TempDir, "subDirNew", "ConvergeFileContentsTestFile")
 
 			err := osFs.WriteFile(testPath, []byte("test"))
 			Expect(err).ToNot(HaveOccurred())
 		})
 	})
 
-	It("read file", func() {
-		osFs := createOsFs()
-		testPath := filepath.Join(os.TempDir(), "ReadFileTestFile")
+	Context("we want to stat a file quietly, i.e. without logging", func() {
+		It("Stats the file but doesn't write any logs", func() {
+			logger := &loggerfakes.FakeLogger{}
+			osFs := NewOsFileSystem(logger)
+			testPath := filepath.Join(TempDir, "OpenFileTestFile")
 
-		osFs.WriteFileString(testPath, "some contents")
-		defer os.Remove(testPath)
+			file, err := osFs.OpenFile(testPath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
+			Expect(err).ToNot(HaveOccurred())
+			defer file.Close()
+			defer os.Remove(testPath)
 
-		content, err := osFs.ReadFile(testPath)
-		Expect(err).ToNot(HaveOccurred())
-		Expect("some contents").To(Equal(string(content)))
+			fsInfo, err := osFs.StatWithOpts(testPath, StatOpts{Quiet: true})
+			Expect(err).ToNot(HaveOccurred())
+
+			// Go standard library
+			osInfo, err := os.Stat(testPath)
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(os.SameFile(fsInfo, osInfo)).To(BeTrue())
+			Expect(logger.DebugCallCount()).To(Equal(0))
+			Expect(logger.DebugWithDetailsCallCount()).To(Equal(0))
+		})
+	})
+
+	Context("we want to write a file quietly, i.e. without logging", func() {
+		It("Still writes the file but doesn't write any logs", func() {
+			logger := &loggerfakes.FakeLogger{}
+			osFs := NewOsFileSystem(logger)
+
+			testPath := filepath.Join(TempDir, "subDir", "ConvergeFileContentsTestFile")
+
+			defer os.Remove(testPath)
+			err := osFs.WriteFileQuietly(testPath, []byte("test"))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(logger.DebugCallCount()).To(Equal(1))
+			Expect(logger.DebugWithDetailsCallCount()).To(Equal(0))
+
+			writtenContent, _ := osFs.ReadFileString(testPath)
+			Expect(writtenContent).To(Equal("test"))
+		})
+	})
+
+	Describe("reading files", func() {
+		Context("with quiet enabled", func() {
+			It("logs nothing", func() {
+				logger := &loggerfakes.FakeLogger{}
+				osFs := NewOsFileSystem(logger)
+				testPath := filepath.Join(TempDir, "ReadFileTestFile")
+
+				osFs.WriteFileQuietly(testPath, []byte("some contents"))
+				defer os.Remove(testPath)
+
+				beforeCount := logger.DebugCallCount()
+
+				opts := ReadOpts{Quiet: true}
+				content, err := osFs.ReadFileWithOpts(testPath, opts)
+				Expect(err).ToNot(HaveOccurred())
+				Expect("some contents").To(Equal(string(content)))
+
+				Expect(logger.DebugCallCount() - beforeCount).To(Equal(0))
+			})
+		})
+
+		Context("with default strategy", func() {
+			It("logs the file content", func() {
+				logger := &loggerfakes.FakeLogger{}
+				osFs := NewOsFileSystem(logger)
+				testPath := filepath.Join(TempDir, "ReadFileTestFile")
+
+				osFs.WriteFileQuietly(testPath, []byte("some contents"))
+				defer os.Remove(testPath)
+
+				beforeCount := logger.DebugCallCount()
+				beforeCountDetails := logger.DebugWithDetailsCallCount()
+
+				content, err := osFs.ReadFile(testPath)
+				Expect(err).ToNot(HaveOccurred())
+				Expect("some contents").To(Equal(string(content)))
+
+				Expect(logger.DebugCallCount() - beforeCount).To(Equal(1))
+				Expect(logger.DebugWithDetailsCallCount() - beforeCountDetails).To(Equal(1))
+			})
+		})
 	})
 
 	It("file exists", func() {
 		osFs := createOsFs()
-		testPath := filepath.Join(os.TempDir(), "FileExistsTestFile")
+		testPath := filepath.Join(TempDir, "FileExistsTestFile")
 
 		Expect(osFs.FileExists(testPath)).To(BeFalse())
 
@@ -293,7 +422,7 @@ var _ = Describe("OS FileSystem", func() {
 
 	It("rename", func() {
 		osFs := createOsFs()
-		tempDir := os.TempDir()
+		tempDir := TempDir
 		oldPath := filepath.Join(tempDir, "old")
 		oldFilePath := filepath.Join(oldPath, "test.txt")
 		newPath := filepath.Join(tempDir, "new")
@@ -313,15 +442,6 @@ var _ = Describe("OS FileSystem", func() {
 	})
 
 	Describe("Symlink", func() {
-		var TempDir string
-		BeforeEach(func() {
-			var err error
-			TempDir, err = ioutil.TempDir("", "")
-			Expect(err).ToNot(HaveOccurred())
-		})
-		AfterEach(func() {
-			os.RemoveAll(TempDir)
-		})
 
 		It("creates a symlink", func() {
 			osFs := createOsFs()
@@ -479,8 +599,8 @@ var _ = Describe("OS FileSystem", func() {
 
 	It("read and follow link", func() {
 		osFs := createOsFs()
-		targetPath := filepath.Join(os.TempDir(), "SymlinkTestFile")
-		containingDir := filepath.Join(os.TempDir(), "SubDir")
+		targetPath := filepath.Join(TempDir, "SymlinkTestFile")
+		containingDir := filepath.Join(TempDir, "SubDir")
 		symlinkPath := filepath.Join(containingDir, "SymlinkTestSymlink")
 
 		osFs.WriteFileString(targetPath, "some content")
@@ -510,8 +630,8 @@ var _ = Describe("OS FileSystem", func() {
 
 		BeforeEach(func() {
 			osFs = createOsFs()
-			symlinkPath = filepath.Join(os.TempDir(), "SymlinkTestFile")
-			containingDir = filepath.Join(os.TempDir(), "SubDir")
+			symlinkPath = filepath.Join(TempDir, "SymlinkTestFile")
+			containingDir = filepath.Join(TempDir, "SubDir")
 			targetPath = filepath.Join(containingDir, "TestSymlinkTarget")
 		})
 
@@ -602,36 +722,30 @@ var _ = Describe("OS FileSystem", func() {
 	})
 
 	Describe("Temporary directories and files", func() {
-		var (
-			osFs        FileSystem
-			testTempDir string
-		)
+		var osFs FileSystem
 		BeforeEach(func() {
 			osFs = createOsFs()
-			var err error
-			testTempDir, err = ioutil.TempDir("", "os_filesystem_test")
-			Expect(err).ToNot(HaveOccurred())
 		})
 
 		AfterEach(func() {
-			os.Remove(testTempDir)
+			os.Remove(TempDir)
 		})
 
 		Context("a temp root is set", func() {
 			BeforeEach(func() {
-				osFs.ChangeTempRoot(testTempDir)
+				osFs.ChangeTempRoot(TempDir)
 			})
 
 			It("creates temp files under that root", func() {
 				file, err := osFs.TempFile("some-file-prefix")
 				Expect(err).ToNot(HaveOccurred())
-				Expect(file.Name()).To(HavePrefix(filepath.Join(testTempDir, "some-file-prefix")))
+				Expect(file.Name()).To(HavePrefix(filepath.Join(TempDir, "some-file-prefix")))
 			})
 
 			It("creates temp directories under that root", func() {
 				dirName, err := osFs.TempDir("some-dir-prefix")
 				Expect(err).ToNot(HaveOccurred())
-				Expect(dirName).To(HavePrefix(filepath.Join(testTempDir, "some-dir-prefix")))
+				Expect(dirName).To(HavePrefix(filepath.Join(TempDir, "some-dir-prefix")))
 			})
 		})
 

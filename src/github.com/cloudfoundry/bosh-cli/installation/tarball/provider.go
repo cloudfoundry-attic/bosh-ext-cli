@@ -3,15 +3,14 @@ package tarball
 import (
 	"fmt"
 	"io"
-	"net"
-	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
-	bicrypto "github.com/cloudfoundry/bosh-cli/crypto"
 	biui "github.com/cloudfoundry/bosh-cli/ui"
+	boshcrypto "github.com/cloudfoundry/bosh-utils/crypto"
 	bosherr "github.com/cloudfoundry/bosh-utils/errors"
-	bihttpclient "github.com/cloudfoundry/bosh-utils/httpclient"
+	"github.com/cloudfoundry/bosh-utils/httpclient"
 	boshlog "github.com/cloudfoundry/bosh-utils/logger"
 	boshretry "github.com/cloudfoundry/bosh-utils/retrystrategy"
 	boshsys "github.com/cloudfoundry/bosh-utils/system"
@@ -27,22 +26,10 @@ type Provider interface {
 	Get(Source, biui.Stage) (path string, err error)
 }
 
-var HTTPClient = &http.Client{
-	Transport: &http.Transport{
-		Proxy: http.ProxyFromEnvironment,
-		Dial: (&net.Dialer{
-			Timeout:   30 * time.Second,
-			KeepAlive: 0 * time.Second,
-		}).Dial,
-		TLSHandshakeTimeout: 10 * time.Second,
-	},
-}
-
 type provider struct {
 	cache            Cache
 	fs               boshsys.FileSystem
-	httpClient       bihttpclient.HTTPClient
-	sha1Calculator   bicrypto.SHA1Calculator
+	httpClient       *httpclient.HTTPClient
 	downloadAttempts int
 	delayTimeout     time.Duration
 	logger           boshlog.Logger
@@ -52,8 +39,7 @@ type provider struct {
 func NewProvider(
 	cache Cache,
 	fs boshsys.FileSystem,
-	httpClient bihttpclient.HTTPClient,
-	sha1Calculator bicrypto.SHA1Calculator,
+	httpClient *httpclient.HTTPClient,
 	downloadAttempts int,
 	delayTimeout time.Duration,
 	logger boshlog.Logger,
@@ -62,7 +48,6 @@ func NewProvider(
 		cache:            cache,
 		fs:               fs,
 		httpClient:       httpClient,
-		sha1Calculator:   sha1Calculator,
 		downloadAttempts: downloadAttempts,
 		delayTimeout:     delayTimeout,
 
@@ -72,51 +57,53 @@ func NewProvider(
 }
 
 func (p *provider) Get(source Source, stage biui.Stage) (string, error) {
-	if strings.HasPrefix(source.GetURL(), "file://") {
-		filePath := strings.TrimPrefix(source.GetURL(), "file://")
-
-		expandedPath, err := p.fs.ExpandPath(filePath)
-		if err != nil {
-			p.logger.Warn(p.logTag, "Failed to expand file path %s, using original URL", filePath)
-			return filePath, nil
-		}
-
-		p.logger.Debug(p.logTag, "Using the tarball from file source: '%s'", filePath)
-		return expandedPath, nil
-	}
-
-	if !strings.HasPrefix(source.GetURL(), "http") {
-		return "", bosherr.Errorf("Invalid source URL: '%s', must be either file:// or http(s)://", source.GetURL())
-	}
-
-	var cachedPath string
-
-	err := stage.Perform(fmt.Sprintf("Downloading %s", source.Description()), func() error {
-		var found bool
-
-		cachedPath, found = p.cache.Get(source)
-		if found {
-			p.logger.Debug(p.logTag, "Using the tarball from cache: '%s'", cachedPath)
-			return biui.NewSkipStageError(bosherr.Error("Already downloaded"), "Found in local cache")
-		}
-
-		retryStrategy := boshretry.NewAttemptRetryStrategy(
-			p.downloadAttempts, p.delayTimeout, p.downloadRetryable(source), p.logger)
-
-		err := retryStrategy.Try()
-		if err != nil {
-			return bosherr.WrapErrorf(err, "Failed to download from '%s'", source.GetURL())
-		}
-
-		p.logger.Debug(p.logTag, "Using the downloaded tarball: '%s'", cachedPath)
-
-		return nil
-	})
+	u, err := url.Parse(source.GetURL())
 	if err != nil {
-		return "", err
+		return "", bosherr.WrapError(err, "URL could not be parsed")
 	}
 
-	return p.cache.Path(source), nil
+	if u.Scheme != "https" && u.Scheme != "http" && u.Scheme != "file" && u.Scheme != "" {
+		return "", bosherr.Errorf("Unsupported scheme in URL '%s'", source.GetURL())
+	}
+
+	if strings.HasPrefix(source.GetURL(), "http") {
+		err := stage.Perform(fmt.Sprintf("Downloading %s", source.Description()), func() error {
+			cachedPath, found := p.cache.Get(source)
+			if found {
+				p.logger.Debug(p.logTag, "Using the tarball from cache: '%s'", cachedPath)
+				return biui.NewSkipStageError(bosherr.Error("Already downloaded"), "Found in local cache")
+			}
+
+			retryStrategy := boshretry.NewAttemptRetryStrategy(
+				p.downloadAttempts, p.delayTimeout, p.downloadRetryable(source), p.logger)
+
+			err := retryStrategy.Try()
+			if err != nil {
+				return bosherr.WrapErrorf(err, "Failed to download from '%s'", source.GetURL())
+			}
+
+			p.logger.Debug(p.logTag, "Using the downloaded tarball: '%s'", cachedPath)
+
+			return nil
+		})
+		if err != nil {
+			return "", err
+		}
+
+		return p.cache.Path(source), nil
+	}
+
+	filePath := strings.TrimPrefix(source.GetURL(), "file://")
+
+	expandedPath, err := p.fs.ExpandPath(filePath)
+	if err != nil {
+		p.logger.Warn(p.logTag, "Failed to expand file path %s, using original URL", filePath)
+		return filePath, nil
+	}
+
+	p.logger.Debug(p.logTag, "Using the tarball from file source: '%s'", filePath)
+
+	return expandedPath, nil
 }
 
 func (p *provider) downloadRetryable(source Source) boshretry.Retryable {
@@ -127,6 +114,8 @@ func (p *provider) downloadRetryable(source Source) boshretry.Retryable {
 		}
 
 		defer func() {
+			downloadedFile.Close()
+
 			if err = p.fs.RemoveAll(downloadedFile.Name()); err != nil {
 				p.logger.Warn(p.logTag, "Failed to remove downloaded file: %s", err.Error())
 			}
@@ -148,14 +137,17 @@ func (p *provider) downloadRetryable(source Source) boshretry.Retryable {
 			return true, bosherr.WrapError(err, "Saving downloaded bits to temporary file")
 		}
 
-		downloadedSha1, err := p.sha1Calculator.Calculate(downloadedFile.Name())
+		digest, err := boshcrypto.ParseMultipleDigest(source.GetSHA1())
 		if err != nil {
-			return true, bosherr.WrapError(err, "Calculating sha1 for downloaded file")
+			return true, err
 		}
 
-		if downloadedSha1 != source.GetSHA1() {
-			return true, bosherr.Errorf("SHA1 of downloaded file '%s' does not match expected SHA1 '%s'", downloadedSha1, source.GetSHA1())
+		err = digest.VerifyFilePath(downloadedFile.Name(), p.fs)
+		if err != nil {
+			return true, bosherr.WrapError(err, "Verifying digest for downloaded file")
 		}
+
+		downloadedFile.Close()
 
 		err = p.cache.Save(downloadedFile.Name(), source)
 		if err != nil {

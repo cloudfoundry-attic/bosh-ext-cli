@@ -6,6 +6,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"errors"
+	"path/filepath"
 
 	biconfig "github.com/cloudfoundry/bosh-cli/config"
 	boshlog "github.com/cloudfoundry/bosh-utils/logger"
@@ -14,7 +15,7 @@ import (
 	fakeuuid "github.com/cloudfoundry/bosh-utils/uuid/fakes"
 
 	fakebicloud "github.com/cloudfoundry/bosh-cli/cloud/fakes"
-	fakebistemcell "github.com/cloudfoundry/bosh-cli/stemcell/fakes"
+	fakebistemcell "github.com/cloudfoundry/bosh-cli/stemcell/stemcellfakes"
 	fakebiui "github.com/cloudfoundry/bosh-cli/ui/fakes"
 )
 
@@ -38,26 +39,26 @@ var _ = Describe("Manager", func() {
 		reader = fakebistemcell.NewFakeReader()
 		logger := boshlog.NewLogger(boshlog.LevelNone)
 		fakeUUIDGenerator = &fakeuuid.FakeGenerator{}
-		deploymentStateService := biconfig.NewFileSystemDeploymentStateService(fs, fakeUUIDGenerator, logger, "/fake/path")
+		deploymentStateService := biconfig.NewFileSystemDeploymentStateService(fs, fakeUUIDGenerator, logger, filepath.Join("/", "fake", "path"))
 		fakeUUIDGenerator.GeneratedUUID = "fake-stemcell-id-1"
 		stemcellRepo = biconfig.NewStemcellRepo(deploymentStateService, fakeUUIDGenerator)
 		fakeStage = fakebiui.NewFakeStage()
 		fakeCloud = fakebicloud.NewFakeCloud()
 		manager = NewManager(stemcellRepo, fakeCloud)
-		stemcellTarballPath = "/stemcell/tarball/path"
-		tempExtractionDir = "/path/to/dest"
+		stemcellTarballPath = filepath.Join("/", "stemcell", "tarball", "path")
+		tempExtractionDir = filepath.Join("/", "path", "to", "dest")
 		fs.TempDirDir = tempExtractionDir
 
 		expectedExtractedStemcell = NewExtractedStemcell(
 			Manifest{
-				Name:      "fake-stemcell-name",
-				Version:   "fake-stemcell-version",
-				ImagePath: "fake-image-path",
+				Name:    "fake-stemcell-name",
+				Version: "fake-stemcell-version",
 				CloudProperties: biproperty.Map{
 					"fake-prop-key": "fake-prop-value",
 				},
 			},
 			tempExtractionDir,
+			nil,
 			fs,
 		)
 		reader.SetReadBehavior(stemcellTarballPath, tempExtractionDir, expectedExtractedStemcell, nil)
@@ -85,7 +86,7 @@ var _ = Describe("Manager", func() {
 
 			Expect(fakeCloud.CreateStemcellInputs).To(Equal([]fakebicloud.CreateStemcellInput{
 				{
-					ImagePath: "fake-image-path",
+					ImagePath: filepath.Join(tempExtractionDir, "image"),
 					CloudProperties: biproperty.Map{
 						"fake-prop-key": "fake-prop-value",
 					},

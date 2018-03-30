@@ -4,7 +4,9 @@ import (
 	bosherr "github.com/cloudfoundry/bosh-utils/errors"
 	boshsys "github.com/cloudfoundry/bosh-utils/system"
 
+	"github.com/cloudfoundry/bosh-cli/crypto"
 	. "github.com/cloudfoundry/bosh-cli/release/resource"
+	crypto2 "github.com/cloudfoundry/bosh-utils/crypto"
 )
 
 type ByName []*Package
@@ -49,8 +51,16 @@ func (p Package) String() string { return p.Name() }
 func (p Package) Name() string        { return p.resource.Name() }
 func (p Package) Fingerprint() string { return p.resource.Fingerprint() }
 
-func (p *Package) ArchivePath() string { return p.resource.ArchivePath() }
-func (p *Package) ArchiveSHA1() string { return p.resource.ArchiveSHA1() }
+func (p *Package) ArchivePath() string   { return p.resource.ArchivePath() }
+func (p *Package) ArchiveDigest() string { return p.resource.ArchiveDigest() }
+
+func (p *Package) RehashWithCalculator(calculator crypto.DigestCalculator, archiveFileReader crypto2.ArchiveDigestFilePathReader) (*Package, error) {
+	newResource, err := p.resource.RehashWithCalculator(calculator, archiveFileReader)
+	newPkg := *p
+	newPkg.resource = newResource
+
+	return &newPkg, err
+}
 
 func (p *Package) Build(dev, final ArchiveIndex) error { return p.resource.Build(dev, final) }
 func (p *Package) Finalize(final ArchiveIndex) error   { return p.resource.Finalize(final) }

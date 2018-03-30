@@ -3,6 +3,7 @@ package cmd_test
 import (
 	"errors"
 	"os"
+	"path/filepath"
 
 	boshlog "github.com/cloudfoundry/bosh-utils/logger"
 	fakesys "github.com/cloudfoundry/bosh-utils/system/fakes"
@@ -16,8 +17,9 @@ import (
 
 var _ = Describe("Factory", func() {
 	var (
-		fs      *fakesys.FakeFileSystem
-		factory Factory
+		fs           *fakesys.FakeFileSystem
+		factory      Factory
+		fakeFilePath string
 	)
 
 	BeforeEach(func() {
@@ -31,35 +33,37 @@ var _ = Describe("Factory", func() {
 		deps.FS = fs
 
 		factory = NewFactory(deps)
+		fakeFilePath = filepath.Join("/", "file")
 	})
 
 	Describe("unknown commands, args and flags", func() {
 		BeforeEach(func() {
-			err := fs.WriteFileString("/file", "")
+			err := fs.WriteFileString(filepath.Join("/", "file"), "")
 			Expect(err).ToNot(HaveOccurred())
 		})
 
 		cmds := map[string][]string{
 			"help":                  []string{},
-			"add-blob":              []string{"/file", "directory"},
+			"add-blob":              []string{filepath.Join("/", "file"), "directory"},
 			"attach-disk":           []string{"instance/abad1dea", "disk-cid-123"},
 			"blobs":                 []string{},
-			"interpolate":           []string{"/file"},
+			"interpolate":           []string{filepath.Join("/", "file")},
 			"cancel-task":           []string{"1234"},
 			"clean-up":              []string{},
 			"cloud-check":           []string{},
 			"cloud-config":          []string{},
-			"create-env":            []string{"/file"},
-			"create-release":        []string{"/file"},
+			"create-env":            []string{filepath.Join("/", "file")},
+			"sha2ify-release":       []string{filepath.Join("/", "file"), filepath.Join("/", "file2")},
+			"create-release":        []string{filepath.Join("/", "file")},
 			"delete-deployment":     []string{},
 			"delete-disk":           []string{"cid"},
-			"delete-env":            []string{"/file"},
+			"delete-env":            []string{filepath.Join("/", "file")},
 			"delete-release":        []string{"release-version"},
 			"delete-snapshot":       []string{"cid"},
 			"delete-snapshots":      []string{},
 			"delete-stemcell":       []string{"name/version"},
 			"delete-vm":             []string{"cid"},
-			"deploy":                []string{"/file"},
+			"deploy":                []string{filepath.Join("/", "file")},
 			"deployment":            []string{},
 			"deployments":           []string{},
 			"disks":                 []string{},
@@ -69,9 +73,9 @@ var _ = Describe("Factory", func() {
 			"errands":               []string{},
 			"events":                []string{},
 			"export-release":        []string{"release/version", "os/version"},
-			"finalize-release":      []string{"/file"},
-			"generate-job":          []string{"/file"},
-			"generate-package":      []string{"/file"},
+			"finalize-release":      []string{filepath.Join("/", "file")},
+			"generate-job":          []string{filepath.Join("/", "file")},
+			"generate-package":      []string{filepath.Join("/", "file")},
 			"init-release":          []string{},
 			"inspect-release":       []string{"name/version"},
 			"instances":             []string{},
@@ -82,7 +86,7 @@ var _ = Describe("Factory", func() {
 			"manifest":              []string{},
 			"recreate":              []string{"slug"},
 			"releases":              []string{},
-			"remove-blob":           []string{"/file"},
+			"remove-blob":           []string{filepath.Join("/", "file")},
 			"reset-release":         []string{},
 			"restart":               []string{"slug"},
 			"run-errand":            []string{"name"},
@@ -95,12 +99,12 @@ var _ = Describe("Factory", func() {
 			"take-snapshot":         []string{"group/id"},
 			"task":                  []string{"1234"},
 			"tasks":                 []string{},
-			"update-cloud-config":   []string{"/file"},
+			"update-cloud-config":   []string{filepath.Join("/", "file")},
 			"update-resurrection":   []string{"off"},
-			"update-runtime-config": []string{"/file"},
+			"update-runtime-config": []string{filepath.Join("/", "file")},
 			"upload-blobs":          []string{},
-			"upload-release":        []string{"/file"},
-			"upload-stemcell":       []string{"/file"},
+			"upload-release":        []string{filepath.Join("/", "file")},
+			"upload-stemcell":       []string{filepath.Join("/", "file")},
 			"vms":                   []string{},
 		}
 
@@ -190,12 +194,12 @@ var _ = Describe("Factory", func() {
 
 	Describe("deploy command", func() {
 		BeforeEach(func() {
-			err := fs.WriteFileString("/file", "")
+			err := fs.WriteFileString(fakeFilePath, "")
 			Expect(err).ToNot(HaveOccurred())
 		})
 
 		It("parses multiple skip-drain flags", func() {
-			cmd, err := factory.New([]string{"deploy", "--skip-drain=job1", "--skip-drain=job2", "/file"})
+			cmd, err := factory.New([]string{"deploy", "--skip-drain=job1", "--skip-drain=job2", fakeFilePath})
 			Expect(err).ToNot(HaveOccurred())
 
 			slug1, _ := boshdir.NewInstanceGroupOrInstanceSlugFromString("job1")
@@ -209,13 +213,13 @@ var _ = Describe("Factory", func() {
 		})
 
 		It("errors when excluding = from --skip-drain", func() {
-			_, err := factory.New([]string{"deploy", "--skip-drain", "job1", "/file"})
+			_, err := factory.New([]string{"deploy", "--skip-drain", "job1", fakeFilePath})
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("Not found: open job1: no such file or directory"))
 		})
 
 		It("defaults --skip-drain option value to all", func() {
-			cmd, err := factory.New([]string{"deploy", "--skip-drain", "/file"})
+			cmd, err := factory.New([]string{"deploy", "--skip-drain", fakeFilePath})
 			Expect(err).ToNot(HaveOccurred())
 
 			opts := cmd.Opts.(*DeployOpts)
@@ -294,6 +298,16 @@ var _ = Describe("Factory", func() {
 		})
 	})
 
+	Describe("task command", func() {
+		It("is passed the deployment flag", func() {
+			cmd, err := factory.New([]string{"task", "--deployment", "deployment"})
+			Expect(err).ToNot(HaveOccurred())
+
+			opts := cmd.Opts.(*TaskOpts)
+			Expect(opts.Deployment).To(Equal("deployment"))
+		})
+	})
+
 	Describe("help command", func() {
 		It("has a help command", func() {
 			cmd, err := factory.New([]string{"help"})
@@ -313,6 +327,8 @@ var _ = Describe("Factory", func() {
 
 			opts := cmd.Opts.(*MessageOpts)
 			Expect(opts.Message).To(ContainSubstring("Usage:"))
+			Expect(opts.Message).To(ContainSubstring(
+				"SSH into instance(s)                               https://bosh.io/docs/cli-v2#ssh"))
 			Expect(opts.Message).To(ContainSubstring("Application Options:"))
 			Expect(opts.Message).To(ContainSubstring("Available commands:"))
 		})
@@ -323,6 +339,7 @@ var _ = Describe("Factory", func() {
 
 			opts := cmd.Opts.(*MessageOpts)
 			Expect(opts.Message).To(ContainSubstring("Usage:"))
+			Expect(opts.Message).To(ContainSubstring("SSH into instance(s)\n\nhttps://bosh.io/docs/cli-v2#ssh"))
 			Expect(opts.Message).To(ContainSubstring("Application Options:"))
 			Expect(opts.Message).To(ContainSubstring("[ssh command options]"))
 		})
@@ -351,6 +368,7 @@ var _ = Describe("Factory", func() {
 			boshOpts.ResetRelease = ResetReleaseOpts{}
 			boshOpts.GenerateJob = GenerateJobOpts{}
 			boshOpts.GeneratePackage = GeneratePackageOpts{}
+			boshOpts.VendorPackage = VendorPackageOpts{}
 			boshOpts.CreateRelease = CreateReleaseOpts{}
 			boshOpts.FinalizeRelease = FinalizeReleaseOpts{}
 			boshOpts.Blobs = BlobsOpts{}
@@ -360,6 +378,14 @@ var _ = Describe("Factory", func() {
 			boshOpts.UploadBlobs = UploadBlobsOpts{}
 			boshOpts.SSH = SSHOpts{}
 			boshOpts.SCP = SCPOpts{}
+			boshOpts.Deploy = DeployOpts{}
+			boshOpts.UpdateRuntimeConfig = UpdateRuntimeConfigOpts{}
+			boshOpts.VMs = VMsOpts{}
+			boshOpts.Instances = InstancesOpts{}
+			boshOpts.Config = ConfigOpts{}
+			boshOpts.Configs = ConfigsOpts{}
+			boshOpts.UpdateConfig = UpdateConfigOpts{}
+			boshOpts.DeleteConfig = DeleteConfigOpts{}
 			return boshOpts
 		}
 
@@ -370,6 +396,7 @@ var _ = Describe("Factory", func() {
 			// Check against entire BoshOpts to avoid future missing assertions
 			Expect(clearNonGlobalOpts(cmd.BoshOpts)).To(Equal(BoshOpts{
 				ConfigPathOpt: "~/.bosh/config",
+				Parallel:      5,
 			}))
 		})
 
@@ -385,6 +412,7 @@ var _ = Describe("Factory", func() {
 				"--tty",
 				"--no-color",
 				"--non-interactive",
+				"--parallel", "123",
 				"locks",
 			}
 
@@ -402,6 +430,7 @@ var _ = Describe("Factory", func() {
 				TTYOpt:            true,
 				NoColorOpt:        true,
 				NonInteractiveOpt: true,
+				Parallel:          123,
 			}))
 		})
 

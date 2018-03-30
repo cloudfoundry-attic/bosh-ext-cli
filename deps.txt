@@ -1,5 +1,9 @@
-3c5146c github.com/cloudfoundry/bosh-cli/.git
-ddd2c13 github.com/cloudfoundry/bosh-utils/.git
-576b6af github.com/cppforlife/go-semi-semantic/.git
-4e64e4a github.com/jessevdk/go-flags/.git
-07af930 github.com/pivotal-golang/clock/.git
+e9dc86b code.cloudfoundry.org/clock/.git
+712bfd7 github.com/cloudfoundry/bosh-cli/.git
+c6a922e github.com/cloudfoundry/bosh-utils/.git
+f88afde github.com/jessevdk/go-flags/.git
+03ffd3f github.com/onsi/ginkgo/.git
+649b44d github.com/onsi/gomega/.git
+6078986 golang.org/x/net/.git
+ece95c7 golang.org/x/text/.git
+5420a8b gopkg.in/yaml.v2/.git

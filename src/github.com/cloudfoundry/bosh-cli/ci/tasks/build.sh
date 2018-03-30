@@ -9,13 +9,14 @@ base=`pwd`
 
 semver=`cat version-semver/number`
 timestamp=`date -u +"%Y-%m-%dT%H:%M:%SZ"`
-filename="bosh-cli-${semver}-${GOOS}-${GOARCH}"
+filename="${FILENAME_PREFIX}bosh-cli-${semver}-${GOOS}-${GOARCH}"
 
 if [[ $GOOS = 'windows' ]]; then
   filename="${filename}.exe"
 fi
 
 cd gopath/src/github.com/cloudfoundry/bosh-cli
+source ci/docker/deps-golang-1.7.1
 bin/require-ci-golang-version
 
 git_rev=`git rev-parse --short HEAD`
@@ -27,11 +28,6 @@ sed 's/\[DEV BUILD\]/'"$version"'/' cmd/version.go > cmd/version.tmp && mv cmd/v
 bin/build
 
 shasum_value=`sha1sum out/bosh | cut -f 1 -d' '`
-
-set +x
-if [[ $SKIP_BOSH_IO = false ]]; then
-  curl --fail -X POST "https://bosh.io/checksums/${filename}" -d "sha1=${shasum_value}" -H "Authorization: bearer ${BOSHIO_BEARER_TOKEN}"
-fi
-set -x
+echo "sha1: ${shasum_value}"
 
 mv out/bosh $base/compiled-${GOOS}/${filename}

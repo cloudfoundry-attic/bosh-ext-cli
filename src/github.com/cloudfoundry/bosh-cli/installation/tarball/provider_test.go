@@ -1,42 +1,60 @@
 package tarball_test
 
 import (
+	"crypto/sha1"
 	"errors"
+	"fmt"
 	"io/ioutil"
+	"net/http"
 	"os"
+	"path/filepath"
 
-	fakebicrypto "github.com/cloudfoundry/bosh-cli/crypto/fakes"
 	. "github.com/cloudfoundry/bosh-cli/installation/tarball"
 	fakebiui "github.com/cloudfoundry/bosh-cli/ui/fakes"
-	fakebihttpclient "github.com/cloudfoundry/bosh-utils/httpclient/fakes"
+	"github.com/cloudfoundry/bosh-utils/httpclient"
 	boshlog "github.com/cloudfoundry/bosh-utils/logger"
+	boshsys "github.com/cloudfoundry/bosh-utils/system"
 	fakesys "github.com/cloudfoundry/bosh-utils/system/fakes"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/ghttp"
 )
 
 var _ = Describe("Provider", func() {
 	var (
-		provider       Provider
-		cache          Cache
-		fs             *fakesys.FakeFileSystem
-		httpClient     *fakebihttpclient.FakeHTTPClient
-		sha1Calculator *fakebicrypto.FakeSha1Calculator
-		source         *fakeSource
-		fakeStage      *fakebiui.FakeStage
+		server    *ghttp.Server
+		provider  Provider
+		cache     Cache
+		fs        *fakesys.FakeFileSystem
+		source    *fakeSource
+		fakeStage *fakebiui.FakeStage
 	)
 
 	BeforeEach(func() {
+		server = ghttp.NewServer()
 		fs = fakesys.NewFakeFileSystem()
 		logger := boshlog.NewLogger(boshlog.LevelNone)
-		cache = NewCache("/fake-base-path", fs, logger)
-		sha1Calculator = fakebicrypto.NewFakeSha1Calculator()
-		httpClient = fakebihttpclient.NewFakeHTTPClient()
-		provider = NewProvider(cache, fs, httpClient, sha1Calculator, 3, 0, logger)
+		cache = NewCache(filepath.Join("/", "fake-base-path"), fs, logger)
+		httpClient := httpclient.NewHTTPClient(httpclient.DefaultClient, logger)
+		provider = NewProvider(cache, fs, httpClient, 3, 0, logger)
 		fakeStage = fakebiui.NewFakeStage()
 	})
 
 	Describe("Get", func() {
+		Context("when URL starts with nothing", func() {
+			BeforeEach(func() {
+				source = newFakeSource("fake-file", "fake-sha1", "fake-description")
+				fs.WriteFileString("expanded-file-path", "")
+				fs.ExpandPathExpanded = "expanded-file-path"
+			})
+
+			It("returns expanded path to file", func() {
+				path, err := provider.Get(source, fakeStage)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(path).To(Equal("expanded-file-path"))
+			})
+		})
+
 		Context("when URL starts with file://", func() {
 			BeforeEach(func() {
 				source = newFakeSource("file://fake-file", "fake-sha1", "fake-description")
@@ -53,7 +71,7 @@ var _ = Describe("Provider", func() {
 
 		Context("when URL starts with http(s)://", func() {
 			BeforeEach(func() {
-				source = newFakeSource("http://fake-url", "fake-sha1", "fake-description")
+				source = newFakeSource(server.URL(), "da39a3ee5e6b4b0d3255bfef95601890afd80709", "fake-description")
 			})
 
 			Context("when tarball is present in cache", func() {
@@ -65,7 +83,9 @@ var _ = Describe("Provider", func() {
 				It("returns cached tarball path", func() {
 					path, err := provider.Get(source, fakeStage)
 					Expect(err).ToNot(HaveOccurred())
-					Expect(path).To(Equal("/fake-base-path/9db1fb7c47637e8709e944a232e1aa98ce6fec26-fake-sha1"))
+					shaSum := sha1.Sum([]byte(source.GetURL()))
+					expectedFileName := fmt.Sprintf("%x-da39a3ee5e6b4b0d3255bfef95601890afd80709", string(shaSum[:]))
+					Expect(path).To(Equal(filepath.Join("/", "fake-base-path", expectedFileName)))
 				})
 
 				It("skips downloading stage", func() {
@@ -79,37 +99,49 @@ var _ = Describe("Provider", func() {
 
 			Context("when tarball is not present in cache", func() {
 				var (
-					tempDownloadFilePath string
+					tempDownloadFilePath1 string
+					tempDownloadFilePath2 string
+					tempDownloadFilePath3 string
 				)
 
 				BeforeEach(func() {
-					tempDownloadFile, err := ioutil.TempFile("", "temp-download-file")
+					tempDownloadFile1, err := ioutil.TempFile("", "temp-download-file1")
 					Expect(err).ToNot(HaveOccurred())
-					fs.ReturnTempFile = tempDownloadFile
-					tempDownloadFilePath = tempDownloadFile.Name()
-					sha1Calculator.SetCalculateBehavior(map[string]fakebicrypto.CalculateInput{
-						tempDownloadFilePath: {Sha1: "fake-sha1"},
-					})
+					tempDownloadFile2, err := ioutil.TempFile("", "temp-download-file2")
+					Expect(err).ToNot(HaveOccurred())
+					tempDownloadFile3, err := ioutil.TempFile("", "temp-download-file3")
+					Expect(err).ToNot(HaveOccurred())
+					fs.ReturnTempFiles = []boshsys.File{tempDownloadFile1, tempDownloadFile2, tempDownloadFile3}
+					tempDownloadFilePath1 = tempDownloadFile1.Name()
+					tempDownloadFilePath2 = tempDownloadFile2.Name()
+					tempDownloadFilePath3 = tempDownloadFile3.Name()
 				})
 
 				AfterEach(func() {
-					os.RemoveAll(tempDownloadFilePath)
+					os.RemoveAll(tempDownloadFilePath1)
+					os.RemoveAll(tempDownloadFilePath2)
+					os.RemoveAll(tempDownloadFilePath3)
 				})
 
 				Context("when downloading succeds", func() {
 					BeforeEach(func() {
-						httpClient.SetGetBehavior("fake-body", 200, nil)
-						httpClient.SetGetBehavior("fake-body", 200, nil)
-						httpClient.SetGetBehavior("fake-body", 200, nil)
+						server.AppendHandlers(
+							ghttp.CombineHandlers(
+								ghttp.RespondWith(200, "fake-body"),
+								ghttp.VerifyRequest("GET", "/"),
+							),
+							ghttp.RespondWith(200, "fake-body"),
+							ghttp.RespondWith(200, "fake-body"),
+						)
 					})
 
 					It("downloads tarball from given URL and returns saved cache tarball path", func() {
 						path, err := provider.Get(source, fakeStage)
 						Expect(err).ToNot(HaveOccurred())
-						Expect(path).To(Equal("/fake-base-path/9db1fb7c47637e8709e944a232e1aa98ce6fec26-fake-sha1"))
-
-						Expect(httpClient.GetInputs).To(HaveLen(1))
-						Expect(httpClient.GetInputs[0].Endpoint).To(Equal("http://fake-url"))
+						shaSum := sha1.Sum([]byte(source.GetURL()))
+						expectedFileName := fmt.Sprintf("%x-da39a3ee5e6b4b0d3255bfef95601890afd80709", string(shaSum[:]))
+						Expect(path).To(Equal(filepath.Join("/", "fake-base-path", expectedFileName)))
+						Expect(server.ReceivedRequests()).To(HaveLen(1))
 					})
 
 					It("logs downloading stage", func() {
@@ -123,28 +155,28 @@ var _ = Describe("Provider", func() {
 
 					Context("when sha1 does not match", func() {
 						BeforeEach(func() {
-							sha1Calculator.SetCalculateBehavior(map[string]fakebicrypto.CalculateInput{
-								tempDownloadFilePath: {Sha1: "fake-sha2"},
-							})
+							source = newFakeSource(server.URL(), "expectedsha1", "fake-description")
 						})
 
 						It("returns an error", func() {
 							_, err := provider.Get(source, fakeStage)
 							Expect(err).To(HaveOccurred())
-							Expect(err.Error()).To(ContainSubstring("'fake-sha2' does not match expected SHA1 'fake-sha1'"))
+							Expect(err.Error()).To(ContainSubstring("Failed to download from '%s': Verifying digest for downloaded file: Expected stream to have digest 'expectedsha1' but was 'da39a3ee5e6b4b0d3255bfef95601890afd80709'", server.URL()))
 						})
 
 						It("retries downloading up to 3 times", func() {
 							_, err := provider.Get(source, fakeStage)
 							Expect(err).To(HaveOccurred())
 
-							Expect(httpClient.GetInputs).To(HaveLen(3))
+							Expect(server.ReceivedRequests()).To(HaveLen(3))
 						})
 
 						It("removes the downloaded file", func() {
 							_, err := provider.Get(source, fakeStage)
 							Expect(err).To(HaveOccurred())
-							Expect(fs.FileExists(tempDownloadFilePath)).To(BeFalse())
+							Expect(fs.FileExists(tempDownloadFilePath1)).To(BeFalse())
+							Expect(fs.FileExists(tempDownloadFilePath2)).To(BeFalse())
+							Expect(fs.FileExists(tempDownloadFilePath3)).To(BeFalse())
 						})
 					})
 
@@ -163,44 +195,70 @@ var _ = Describe("Provider", func() {
 						It("removes the downloaded file", func() {
 							_, err := provider.Get(source, fakeStage)
 							Expect(err).To(HaveOccurred())
-							Expect(fs.FileExists(tempDownloadFilePath)).To(BeFalse())
+							Expect(fs.FileExists(tempDownloadFilePath1)).To(BeFalse())
+							Expect(fs.FileExists(tempDownloadFilePath2)).To(BeFalse())
+							Expect(fs.FileExists(tempDownloadFilePath3)).To(BeFalse())
 						})
 					})
 				})
 
 				Context("when downloading fails", func() {
+					disconnectingRequestHandler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+						conn, _, err := w.(http.Hijacker).Hijack()
+						Expect(err).NotTo(HaveOccurred())
+
+						conn.Close()
+					})
+
 					BeforeEach(func() {
-						httpClient.SetGetBehavior("", 500, errors.New("fake-download-error-1"))
-						httpClient.SetGetBehavior("", 500, errors.New("fake-download-error-2"))
-						httpClient.SetGetBehavior("", 500, errors.New("fake-download-error-3"))
+						server.AppendHandlers(
+							ghttp.CombineHandlers(
+								ghttp.VerifyRequest("GET", "/"),
+								disconnectingRequestHandler,
+							),
+							disconnectingRequestHandler,
+							disconnectingRequestHandler,
+						)
 					})
 
 					It("retries downloading up to 3 times", func() {
 						_, err := provider.Get(source, fakeStage)
 						Expect(err).To(HaveOccurred())
-						Expect(err.Error()).To(ContainSubstring("fake-download-error-3"))
+						Expect(err).To(MatchError(ContainSubstring("Get %s: EOF", server.URL())))
 
-						Expect(httpClient.GetInputs).To(HaveLen(3))
+						Expect(server.ReceivedRequests()).To(HaveLen(3))
 					})
 
 					It("removes the downloaded file", func() {
 						_, err := provider.Get(source, fakeStage)
 						Expect(err).To(HaveOccurred())
-						Expect(fs.FileExists(tempDownloadFilePath)).To(BeFalse())
+						Expect(fs.FileExists(tempDownloadFilePath1)).To(BeFalse())
+						Expect(fs.FileExists(tempDownloadFilePath2)).To(BeFalse())
+						Expect(fs.FileExists(tempDownloadFilePath3)).To(BeFalse())
 					})
 				})
 			})
 		})
 
-		Context("when URL does not start with either file:// or http(s)://", func() {
+		Context("when the URL has an unsupported scheme", func() {
 			BeforeEach(func() {
-				source = newFakeSource("invalid-url", "fake-sha1", "fake-description")
+				source = newFakeSource("ftp://example.com", "fake-sha1", "fake-description")
 			})
 
 			It("returns an error", func() {
 				_, err := provider.Get(source, fakeStage)
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("Invalid source URL: 'invalid-url'"))
+				Expect(err).To(MatchError(ContainSubstring("Unsupported scheme in URL 'ftp://example.com'")))
+			})
+		})
+
+		Context("when the URL is invalid", func() {
+			BeforeEach(func() {
+				source = newFakeSource("%%%%%%%%%", "fake-sha1", "fake-description")
+			})
+
+			It("returns an error", func() {
+				_, err := provider.Get(source, fakeStage)
+				Expect(err).To(MatchError(ContainSubstring("URL could not be parsed")))
 			})
 		})
 	})

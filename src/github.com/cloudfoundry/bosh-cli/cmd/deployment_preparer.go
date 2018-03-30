@@ -101,7 +101,7 @@ type DeploymentPreparer struct {
 	targetProvider                          biinstall.TargetProvider
 }
 
-func (c *DeploymentPreparer) PrepareDeployment(stage biui.Stage) (err error) {
+func (c *DeploymentPreparer) PrepareDeployment(stage biui.Stage, recreate bool) (err error) {
 	c.ui.BeginLinef("Deployment state: '%s'\n", c.deploymentStateService.Path())
 
 	if !c.deploymentStateService.Exists() {
@@ -173,7 +173,7 @@ func (c *DeploymentPreparer) PrepareDeployment(stage biui.Stage) (err error) {
 		return err
 	}
 	defer func() {
-		deleteErr := extractedStemcell.Delete()
+		deleteErr := extractedStemcell.Cleanup()
 		if deleteErr != nil {
 			c.logger.Warn(c.logTag, "Failed to delete extracted stemcell: %s", deleteErr.Error())
 		}
@@ -184,7 +184,7 @@ func (c *DeploymentPreparer) PrepareDeployment(stage biui.Stage) (err error) {
 		return bosherr.WrapError(err, "Checking if deployment has changed")
 	}
 
-	if isDeployed {
+	if isDeployed && !recreate {
 		c.ui.BeginLinef("No deployment, stemcell or release changes. Skipping deploy.\n")
 		return nil
 	}
@@ -227,7 +227,10 @@ func (c *DeploymentPreparer) deploy(
 		return err
 	}
 
-	agentClient := c.agentClientFactory.NewAgentClient(deploymentState.DirectorID, installationManifest.Mbus)
+	agentClient, err := c.agentClientFactory.NewAgentClient(deploymentState.DirectorID, installationManifest.Mbus, installationManifest.Cert.CA)
+	if err != nil {
+		return err
+	}
 	vmManager := c.vmManagerFactory.NewManager(cloud, agentClient)
 
 	blobstore, err := c.blobstoreFactory.Create(installationManifest.Mbus, bihttpclient.CreateDefaultClientInsecureSkipVerify())

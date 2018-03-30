@@ -1,13 +1,14 @@
 package cmd
 
 import (
+	"code.cloudfoundry.org/clock"
 	bicrypto "github.com/cloudfoundry/bosh-cli/crypto"
 	boshui "github.com/cloudfoundry/bosh-cli/ui"
+	boshcrypto "github.com/cloudfoundry/bosh-utils/crypto"
 	boshcmd "github.com/cloudfoundry/bosh-utils/fileutil"
 	boshlog "github.com/cloudfoundry/bosh-utils/logger"
 	boshsys "github.com/cloudfoundry/bosh-utils/system"
 	boshuuid "github.com/cloudfoundry/bosh-utils/uuid"
-	"github.com/pivotal-golang/clock"
 )
 
 type BasicDeps struct {
@@ -18,7 +19,9 @@ type BasicDeps struct {
 	UUIDGen    boshuuid.Generator
 	CmdRunner  boshsys.CmdRunner
 	Compressor boshcmd.Compressor
-	SHA1Calc   bicrypto.SHA1Calculator
+
+	DigestCreationAlgorithms []boshcrypto.Algorithm
+	DigestCalculator         bicrypto.DigestCalculator
 
 	Time clock.Clock
 }
@@ -29,6 +32,8 @@ func NewBasicDeps(ui *boshui.ConfUI, logger boshlog.Logger) BasicDeps {
 
 func NewBasicDepsWithFS(ui *boshui.ConfUI, fs boshsys.FileSystem, logger boshlog.Logger) BasicDeps {
 	cmdRunner := boshsys.NewExecCmdRunner(logger)
+	digestCreationAlgorithms := []boshcrypto.Algorithm{boshcrypto.DigestAlgorithmSHA1}
+	digestCalculator := bicrypto.NewDigestCalculator(fs, digestCreationAlgorithms)
 
 	return BasicDeps{
 		FS:     fs,
@@ -38,7 +43,9 @@ func NewBasicDepsWithFS(ui *boshui.ConfUI, fs boshsys.FileSystem, logger boshlog
 		UUIDGen:    boshuuid.NewGenerator(),
 		CmdRunner:  cmdRunner,
 		Compressor: boshcmd.NewTarballCompressor(cmdRunner, fs),
-		SHA1Calc:   bicrypto.NewSha1Calculator(fs),
+
+		DigestCreationAlgorithms: digestCreationAlgorithms,
+		DigestCalculator:         digestCalculator,
 
 		Time: clock.NewClock(),
 	}

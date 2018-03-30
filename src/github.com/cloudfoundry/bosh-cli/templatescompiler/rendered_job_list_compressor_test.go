@@ -22,10 +22,9 @@ import (
 var _ = Describe("RenderedJobListCompressor", func() {
 	var (
 		outBuffer *bytes.Buffer
-		errBuffer *bytes.Buffer
 		logger    boshlog.Logger
 
-		fakeSHA1Calculator *fakebicrypto.FakeSha1Calculator
+		fakeSHA1Calculator *fakebicrypto.FakeDigestCalculator
 
 		renderedJobList RenderedJobList
 
@@ -34,10 +33,9 @@ var _ = Describe("RenderedJobListCompressor", func() {
 
 	BeforeEach(func() {
 		outBuffer = bytes.NewBufferString("")
-		errBuffer = bytes.NewBufferString("")
-		logger = boshlog.NewWriterLogger(boshlog.LevelDebug, outBuffer, errBuffer)
+		logger = boshlog.NewWriterLogger(boshlog.LevelDebug, outBuffer)
 
-		fakeSHA1Calculator = fakebicrypto.NewFakeSha1Calculator()
+		fakeSHA1Calculator = fakebicrypto.NewFakeDigestCalculator()
 
 		renderedJobList = NewRenderedJobList()
 	})
@@ -124,24 +122,11 @@ var _ = Describe("RenderedJobListCompressor", func() {
 				renderedJobListCompressor = NewRenderedJobListCompressor(fakeFS, fakeCompressor, fakeSHA1Calculator, logger)
 			})
 
-			It("calculates the fingerprint of the rendered", func() {
-				fakeFS.TempDirDir = "fake-rendered-job-list-path"
-
-				fakeSHA1Calculator.SetCalculateBehavior(map[string]fakebicrypto.CalculateInput{
-					"fake-rendered-job-list-path": fakebicrypto.CalculateInput{Sha1: "fake-sha1"},
-				})
-
-				archive, err := renderedJobListCompressor.Compress(renderedJobList)
-				Expect(err).ToNot(HaveOccurred())
-
-				Expect(archive.Fingerprint()).To(Equal("fake-sha1"))
-			})
-
 			It("calculates the SHA1 of the archive", func() {
 				fakeCompressor.CompressFilesInDirTarballPath = "fake-archive-path"
 
 				fakeSHA1Calculator.SetCalculateBehavior(map[string]fakebicrypto.CalculateInput{
-					"fake-archive-path": fakebicrypto.CalculateInput{Sha1: "fake-sha1"},
+					"fake-archive-path": fakebicrypto.CalculateInput{DigestStr: "fake-sha1"},
 				})
 
 				archive, err := renderedJobListCompressor.Compress(renderedJobList)

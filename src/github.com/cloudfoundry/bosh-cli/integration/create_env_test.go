@@ -8,7 +8,6 @@ import (
 	"time"
 
 	bosherr "github.com/cloudfoundry/bosh-utils/errors"
-	fakebihttpclient "github.com/cloudfoundry/bosh-utils/httpclient/fakes"
 	boshlog "github.com/cloudfoundry/bosh-utils/logger"
 	biproperty "github.com/cloudfoundry/bosh-utils/property"
 	fakesys "github.com/cloudfoundry/bosh-utils/system/fakes"
@@ -52,9 +51,10 @@ import (
 	. "github.com/cloudfoundry/bosh-cli/release/resource"
 	birelsetmanifest "github.com/cloudfoundry/bosh-cli/release/set/manifest"
 	bistemcell "github.com/cloudfoundry/bosh-cli/stemcell"
-	fakebistemcell "github.com/cloudfoundry/bosh-cli/stemcell/fakes"
+	fakebistemcell "github.com/cloudfoundry/bosh-cli/stemcell/stemcellfakes"
 	biui "github.com/cloudfoundry/bosh-cli/ui"
 	fakebiui "github.com/cloudfoundry/bosh-cli/ui/fakes"
+	"github.com/cloudfoundry/bosh-utils/fileutil/fakes"
 )
 
 var _ = Describe("bosh", func() {
@@ -96,7 +96,7 @@ var _ = Describe("bosh", func() {
 			fakeRegistryUUIDGenerator     *fakeuuid.FakeGenerator
 			fakeRepoUUIDGenerator         *fakeuuid.FakeGenerator
 			fakeAgentIDGenerator          *fakeuuid.FakeGenerator
-			fakeSHA1Calculator            *fakebicrypto.FakeSha1Calculator
+			fakeDigestCalculator          *fakebicrypto.FakeDigestCalculator
 			legacyDeploymentStateMigrator biconfig.LegacyDeploymentStateMigrator
 			deploymentStateService        biconfig.DeploymentStateService
 			vmRepo                        biconfig.VMRepo
@@ -122,10 +122,9 @@ var _ = Describe("bosh", func() {
 			directorID string
 
 			stemcellTarballPath    = "/fake-stemcell-release.tgz"
-			deploymentManifestPath = "/deployment-dir/fake-deployment-manifest.yml"
-			deploymentStatePath    = "/deployment-dir/fake-deployment-manifest-state.json"
+			deploymentManifestPath = filepath.Join("/", "deployment-dir", "fake-deployment-manifest.yml")
+			deploymentStatePath    = filepath.Join("/", "deployment-dir", "fake-deployment-manifest-state.json")
 
-			stemcellImagePath       = "fake-stemcell-image-path"
 			stemcellCID             = "fake-stemcell-cid"
 			stemcellCloudProperties = biproperty.Map{}
 
@@ -144,6 +143,25 @@ var _ = Describe("bosh", func() {
 
 			agentRunningState = biagentclient.AgentState{JobState: "running"}
 			mbusURL           = "http://fake-mbus-url"
+			caCert            = `-----BEGIN CERTIFICATE-----
+MIIC+TCCAeGgAwIBAgIQLzf5Fs3v+Dblm+CKQFxiKTANBgkqhkiG9w0BAQsFADAm
+MQwwCgYDVQQGEwNVU0ExFjAUBgNVBAoTDUNsb3VkIEZvdW5kcnkwHhcNMTcwNTE2
+MTUzNTI4WhcNMTgwNTE2MTUzNTI4WjAmMQwwCgYDVQQGEwNVU0ExFjAUBgNVBAoT
+DUNsb3VkIEZvdW5kcnkwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQC+
+4E0QJMOpQwbHACvrZ4FleP4/DMFvYUBySfKzDOgd99Nm8LdXuJcI1SYHJ3sV+mh0
++cQmRt8U2A/lw7bNU6JdM0fWHa/2nGjSBKWgPzba68NdsmwjqUjLatKpr1yvd384
+PJJKC7NrxwvChgB8ui84T4SrXHCioYMDEDIqLGmHJHMKnzQ17nu7ECO4e6QuCfnH
+RDs7dTjomTAiFuF4fh4SPgEDMGaCE5HZr4t3gvc9n4UftpcCpi+Jh+neRiWx+v37
+ZAYf2kp3wWtYDlgWk06cZzHZZ9uYZFwHDNHdDKHxGGvAh2Rm6rpPF2oA6OEyx6BH
+85/STCgSMCnV1Wkd+1yPAgMBAAGjIzAhMA4GA1UdDwEB/wQEAwIBBjAPBgNVHRMB
+Af8EBTADAQH/MA0GCSqGSIb3DQEBCwUAA4IBAQBGvGggx3IM4KCMpVDSv9zFKX4K
+IuCRQ6VFab3sgnlelMFaMj3+8baJ/YMko8PP1wVfUviVgKuiZO8tqL00Yo4s1WKp
+x3MLIG4eBX9pj0ZVRa3kpcF2Wvg6WhrzUzONf7pfuz/9avl77o4aSt4TwyCvM4Iu
+gJ7quVQKcfQcAVwuwWRrZXyhjhHaVKoPP5yRS+ESVTl70J5HBh6B7laooxf1yVAW
+8NJK1iQ1Pw2x3ABBo1cSMcTQ3Hk1ZWThJ7oPul2+QyzvOjIjiEPBstyzEPaxPG4I
+nH9ttalAwSLBsobVaK8mmiAdtAdx+CmHWrB4UNxCPYasrt5A6a9A9SiQ2dLd
+-----END CERTIFICATE-----
+`
 
 			expectHasVM1    *gomock.Call
 			expectDeleteVM1 *gomock.Call
@@ -182,6 +200,26 @@ cloud_provider:
     name: fake-cpi-release-job-name
     release: fake-cpi-release-name
   mbus: http://fake-mbus-url
+  cert:
+    ca: |
+      -----BEGIN CERTIFICATE-----
+      MIIC+TCCAeGgAwIBAgIQLzf5Fs3v+Dblm+CKQFxiKTANBgkqhkiG9w0BAQsFADAm
+      MQwwCgYDVQQGEwNVU0ExFjAUBgNVBAoTDUNsb3VkIEZvdW5kcnkwHhcNMTcwNTE2
+      MTUzNTI4WhcNMTgwNTE2MTUzNTI4WjAmMQwwCgYDVQQGEwNVU0ExFjAUBgNVBAoT
+      DUNsb3VkIEZvdW5kcnkwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQC+
+      4E0QJMOpQwbHACvrZ4FleP4/DMFvYUBySfKzDOgd99Nm8LdXuJcI1SYHJ3sV+mh0
+      +cQmRt8U2A/lw7bNU6JdM0fWHa/2nGjSBKWgPzba68NdsmwjqUjLatKpr1yvd384
+      PJJKC7NrxwvChgB8ui84T4SrXHCioYMDEDIqLGmHJHMKnzQ17nu7ECO4e6QuCfnH
+      RDs7dTjomTAiFuF4fh4SPgEDMGaCE5HZr4t3gvc9n4UftpcCpi+Jh+neRiWx+v37
+      ZAYf2kp3wWtYDlgWk06cZzHZZ9uYZFwHDNHdDKHxGGvAh2Rm6rpPF2oA6OEyx6BH
+      85/STCgSMCnV1Wkd+1yPAgMBAAGjIzAhMA4GA1UdDwEB/wQEAwIBBjAPBgNVHRMB
+      Af8EBTADAQH/MA0GCSqGSIb3DQEBCwUAA4IBAQBGvGggx3IM4KCMpVDSv9zFKX4K
+      IuCRQ6VFab3sgnlelMFaMj3+8baJ/YMko8PP1wVfUviVgKuiZO8tqL00Yo4s1WKp
+      x3MLIG4eBX9pj0ZVRa3kpcF2Wvg6WhrzUzONf7pfuz/9avl77o4aSt4TwyCvM4Iu
+      gJ7quVQKcfQcAVwuwWRrZXyhjhHaVKoPP5yRS+ESVTl70J5HBh6B7laooxf1yVAW
+      8NJK1iQ1Pw2x3ABBo1cSMcTQ3Hk1ZWThJ7oPul2+QyzvOjIjiEPBstyzEPaxPG4I
+      nH9ttalAwSLBsobVaK8mmiAdtAdx+CmHWrB4UNxCPYasrt5A6a9A9SiQ2dLd
+      -----END CERTIFICATE-----
 `
 		type manifestContext struct {
 			DiskSize            int
@@ -204,8 +242,8 @@ cloud_provider:
 			}
 			updateManifest(context)
 
-			fakeSHA1Calculator.SetCalculateBehavior(map[string]fakebicrypto.CalculateInput{
-				deploymentManifestPath: {Sha1: "fake-deployment-sha1-1"},
+			fakeDigestCalculator.SetCalculateBehavior(map[string]fakebicrypto.CalculateInput{
+				deploymentManifestPath: {DigestStr: "fake-deployment-sha1-1"},
 			})
 		}
 
@@ -215,20 +253,20 @@ cloud_provider:
 			}
 			updateManifest(context)
 
-			fakeSHA1Calculator.SetCalculateBehavior(map[string]fakebicrypto.CalculateInput{
-				deploymentManifestPath: {Sha1: "fake-deployment-sha1-2"},
+			fakeDigestCalculator.SetCalculateBehavior(map[string]fakebicrypto.CalculateInput{
+				deploymentManifestPath: {DigestStr: "fake-deployment-sha1-2"},
 			})
 		}
 
 		var writeCPIReleaseTarball = func() {
-			err := fs.WriteFileString("/fake-cpi-release.tgz", "fake-tgz-content")
+			err := fs.WriteFileString(filepath.Join("/", "fake-cpi-release.tgz"), "fake-tgz-content")
 			Expect(err).ToNot(HaveOccurred())
 		}
 
 		var allowCPIToBeInstalled = func() {
 			cpiPackage := birelpkg.NewPackage(NewResource("fake-package-name", "fake-package-fingerprint-cpi", nil), nil)
 			job := bireljob.NewJob(NewResource("fake-cpi-release-job-name", "", nil))
-			job.Templates = map[string]string{"templates/cpi.erb": "bin/cpi"}
+			job.Templates = map[string]string{filepath.Join("templates", "cpi.erb"): "bin/cpi"}
 			job.PackageNames = []string{"fake-package-name"}
 			job.AttachPackages([]*birelpkg.Package{cpiPackage})
 			cpiRelease := birel.NewRelease(
@@ -256,7 +294,10 @@ cloud_provider:
 					Name:    "fake-cpi-release-job-name",
 					Release: "fake-cpi-release-name",
 				},
-				Mbus:       mbusURL,
+				Mbus: mbusURL,
+				Cert: biinstallmanifest.Certificate{
+					CA: caCert,
+				},
 				Properties: biproperty.Map{},
 			}
 			installationPath := filepath.Join("fake-install-dir", "fake-installation-id")
@@ -284,15 +325,16 @@ cloud_provider:
 
 		var allowStemcellToBeExtracted = func() {
 			stemcellManifest := bistemcell.Manifest{
-				ImagePath:       "fake-stemcell-image-path",
 				Name:            "fake-stemcell-name",
 				Version:         "fake-stemcell-version",
 				SHA1:            "fake-stemcell-sha1",
 				CloudProperties: biproperty.Map{},
 			}
+
 			extractedStemcell := bistemcell.NewExtractedStemcell(
 				stemcellManifest,
 				"fake-stemcell-extracted-dir",
+				fakes.NewFakeCompressor(),
 				fs,
 			)
 			fakeStemcellExtractor.SetExtractBehavior(stemcellTarballPath, extractedStemcell, nil)
@@ -376,9 +418,8 @@ cloud_provider:
 					deploymentFactory,
 					logger,
 				)
-				fakeHTTPClient := fakebihttpclient.NewFakeHTTPClient()
 				tarballCache := bitarball.NewCache("fake-base-path", fs, logger)
-				tarballProvider := bitarball.NewProvider(tarballCache, fs, fakeHTTPClient, fakeSHA1Calculator, 1, 0, logger)
+				tarballProvider := bitarball.NewProvider(tarballCache, fs, nil, 1, 0, logger)
 
 				cpiInstaller := bicpirel.CpiInstaller{
 					ReleaseManager:   releaseManager,
@@ -451,13 +492,14 @@ cloud_provider:
 			//TODO: use a real StateBuilder and test mockBlobstore.Add & mockAgentClient.CompilePackage
 
 			gomock.InOrder(
-				mockCloud.EXPECT().CreateStemcell(stemcellImagePath, stemcellCloudProperties).Return(stemcellCID, nil),
+				mockCloud.EXPECT().CreateStemcell(filepath.Join("fake-stemcell-extracted-dir", "image"), stemcellCloudProperties).Return(stemcellCID, nil),
 				mockCloud.EXPECT().CreateVM(agentID, stemcellCID, vmCloudProperties, networkInterfaces, vmEnv).Return(vmCID, nil),
 				mockCloud.EXPECT().SetVMMetadata(vmCID, gomock.Any()).Return(nil),
 				mockAgentClient.EXPECT().Ping().Return("any-state", nil),
 
 				mockCloud.EXPECT().CreateDisk(diskSize, diskCloudProperties, vmCID).Return(diskCID, nil),
 				mockCloud.EXPECT().AttachDisk(vmCID, diskCID),
+				mockCloud.EXPECT().SetDiskMetadata(diskCID, gomock.Any()).Return(nil),
 				mockAgentClient.EXPECT().Ping().Return("any-state", nil),
 				mockAgentClient.EXPECT().MountDisk(diskCID),
 
@@ -499,10 +541,12 @@ cloud_provider:
 
 				// attach both disks and migrate
 				mockCloud.EXPECT().AttachDisk(newVMCID, oldDiskCID),
+				mockCloud.EXPECT().SetDiskMetadata(oldDiskCID, gomock.Any()).Return(nil),
 				mockAgentClient.EXPECT().Ping().Return("any-state", nil),
 				mockAgentClient.EXPECT().MountDisk(oldDiskCID),
 				mockCloud.EXPECT().CreateDisk(newDiskSize, diskCloudProperties, newVMCID).Return(newDiskCID, nil),
 				mockCloud.EXPECT().AttachDisk(newVMCID, newDiskCID),
+				mockCloud.EXPECT().SetDiskMetadata(newDiskCID, gomock.Any()).Return(nil),
 				mockAgentClient.EXPECT().Ping().Return("any-state", nil),
 				mockAgentClient.EXPECT().MountDisk(newDiskCID),
 				mockAgentClient.EXPECT().MigrateDisk(),
@@ -545,10 +589,12 @@ cloud_provider:
 
 				// attach both disks and migrate
 				mockCloud.EXPECT().AttachDisk(newVMCID, oldDiskCID),
+				mockCloud.EXPECT().SetDiskMetadata(oldDiskCID, gomock.Any()).Return(nil),
 				mockAgentClient.EXPECT().Ping().Return("any-state", nil),
 				mockAgentClient.EXPECT().MountDisk(oldDiskCID),
 				mockCloud.EXPECT().CreateDisk(newDiskSize, diskCloudProperties, newVMCID).Return(newDiskCID, nil),
 				mockCloud.EXPECT().AttachDisk(newVMCID, newDiskCID),
+				mockCloud.EXPECT().SetDiskMetadata(newDiskCID, gomock.Any()).Return(nil),
 				mockAgentClient.EXPECT().Ping().Return("any-state", nil),
 				mockAgentClient.EXPECT().MountDisk(newDiskCID),
 				mockAgentClient.EXPECT().MigrateDisk(),
@@ -624,10 +670,12 @@ cloud_provider:
 
 				// attach both disks and migrate (with error)
 				mockCloud.EXPECT().AttachDisk(newVMCID, oldDiskCID),
+				mockCloud.EXPECT().SetDiskMetadata(oldDiskCID, gomock.Any()).Return(nil),
 				mockAgentClient.EXPECT().Ping().Return("any-state", nil),
 				mockAgentClient.EXPECT().MountDisk(oldDiskCID),
 				mockCloud.EXPECT().CreateDisk(newDiskSize, diskCloudProperties, newVMCID).Return(newDiskCID, nil),
 				mockCloud.EXPECT().AttachDisk(newVMCID, newDiskCID),
+				mockCloud.EXPECT().SetDiskMetadata(newDiskCID, gomock.Any()).Return(nil),
 				mockAgentClient.EXPECT().Ping().Return("any-state", nil),
 				mockAgentClient.EXPECT().MountDisk(newDiskCID),
 				mockAgentClient.EXPECT().MigrateDisk().Return(
@@ -661,10 +709,12 @@ cloud_provider:
 
 				// attach both disks and migrate
 				mockCloud.EXPECT().AttachDisk(newVMCID, oldDiskCID),
+				mockCloud.EXPECT().SetDiskMetadata(oldDiskCID, gomock.Any()).Return(nil),
 				mockAgentClient.EXPECT().Ping().Return("any-state", nil),
 				mockAgentClient.EXPECT().MountDisk(oldDiskCID),
 				mockCloud.EXPECT().CreateDisk(newDiskSize, diskCloudProperties, newVMCID).Return(newDiskCID, nil),
 				mockCloud.EXPECT().AttachDisk(newVMCID, newDiskCID),
+				mockCloud.EXPECT().SetDiskMetadata(newDiskCID, gomock.Any()).Return(nil),
 				mockAgentClient.EXPECT().Ping().Return("any-state", nil),
 				mockAgentClient.EXPECT().MountDisk(newDiskCID),
 				mockAgentClient.EXPECT().MigrateDisk(),
@@ -697,7 +747,7 @@ cloud_provider:
 
 			fakeAgentIDGenerator = fakeuuid.NewFakeGenerator()
 
-			fakeSHA1Calculator = fakebicrypto.NewFakeSha1Calculator()
+			fakeDigestCalculator = fakebicrypto.NewFakeDigestCalculator()
 
 			mockInstaller = mock_install.NewMockInstaller(mockCtrl)
 			mockInstallerFactory = mock_install.NewMockInstallerFactory(mockCtrl)
@@ -731,7 +781,7 @@ cloud_provider:
 			mockAgentClientFactory = mock_httpagent.NewMockAgentClientFactory(mockCtrl)
 			mockAgentClient = mock_agentclient.NewMockAgentClient(mockCtrl)
 
-			mockAgentClientFactory.EXPECT().NewAgentClient(directorID, mbusURL).Return(mockAgentClient).AnyTimes()
+			mockAgentClientFactory.EXPECT().NewAgentClient(directorID, mbusURL, caCert).Return(mockAgentClient, nil).AnyTimes()
 
 			writeDeploymentManifest()
 			writeCPIReleaseTarball()
@@ -753,7 +803,7 @@ cloud_provider:
 
 		Context("when multiple releases are provided", func() {
 			var (
-				otherReleaseTarballPath = "/fake-other-release.tgz"
+				otherReleaseTarballPath = filepath.Join("/", "fake-other-release.tgz")
 			)
 
 			BeforeEach(func() {
@@ -795,7 +845,7 @@ cloud_provider:
 				expectDeployFlow()
 
 				// new directorID will be generated
-				mockAgentClientFactory.EXPECT().NewAgentClient(gomock.Any(), mbusURL).Return(mockAgentClient)
+				mockAgentClientFactory.EXPECT().NewAgentClient(gomock.Any(), mbusURL, caCert).Return(mockAgentClient, nil)
 
 				err := newCreateEnvCmd().Run(fakeStage, newDeployOpts(deploymentManifestPath, statePath))
 				Expect(err).ToNot(HaveOccurred())
@@ -822,14 +872,14 @@ cloud_provider:
 
 			Context("and it's specified", func() {
 				BeforeEach(func() {
-					err := fs.RemoveAll("/tmp/new/state/path/state")
+					err := fs.RemoveAll(filepath.Join("/", "tmp", "new", "state", "path", "state"))
 					Expect(err).ToNot(HaveOccurred())
 
 					directorID = "fake-uuid-1"
 				})
 
 				It("creates one", func() {
-					createsStatePath("/tmp/new/state/path/state", "/tmp/new/state/path/state")
+					createsStatePath(filepath.Join("/", "tmp", "new", "state", "path", "state"), filepath.Join("/", "tmp", "new", "state", "path", "state"))
 				})
 			})
 		})

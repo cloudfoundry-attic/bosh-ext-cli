@@ -4,9 +4,10 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"regexp"
 
+	boshcrypto "github.com/cloudfoundry/bosh-utils/crypto"
 	bosherr "github.com/cloudfoundry/bosh-utils/errors"
-	fakebihttpclient "github.com/cloudfoundry/bosh-utils/httpclient/fakes"
 	boshlog "github.com/cloudfoundry/bosh-utils/logger"
 	biproperty "github.com/cloudfoundry/bosh-utils/property"
 	fakesys "github.com/cloudfoundry/bosh-utils/system/fakes"
@@ -53,8 +54,8 @@ import (
 	birelsetmanifest "github.com/cloudfoundry/bosh-cli/release/set/manifest"
 	fakebirelsetmanifest "github.com/cloudfoundry/bosh-cli/release/set/manifest/fakes"
 	bistemcell "github.com/cloudfoundry/bosh-cli/stemcell"
-	fakebistemcell "github.com/cloudfoundry/bosh-cli/stemcell/fakes"
 	mock_stemcell "github.com/cloudfoundry/bosh-cli/stemcell/mocks"
+	fakebistemcell "github.com/cloudfoundry/bosh-cli/stemcell/stemcellfakes"
 	biui "github.com/cloudfoundry/bosh-cli/ui"
 	fakebiui "github.com/cloudfoundry/bosh-cli/ui/fakes"
 )
@@ -72,13 +73,13 @@ var _ = Describe("CreateEnvCmd", func() {
 
 	Describe("Run", func() {
 		var (
-			command        *bicmd.CreateEnvCmd
-			fs             *fakesys.FakeFileSystem
-			stdOut         *gbytes.Buffer
-			stdErr         *gbytes.Buffer
-			userInterface  biui.UI
-			sha1Calculator crypto.SHA1Calculator
-			manifestSHA    string
+			command          *bicmd.CreateEnvCmd
+			fs               *fakesys.FakeFileSystem
+			stdOut           *gbytes.Buffer
+			stdErr           *gbytes.Buffer
+			userInterface    biui.UI
+			digestCalculator crypto.DigestCalculator
+			manifestSHA      string
 
 			mockDeployer              *mock_deployment.MockDeployer
 			mockInstaller             *mock_install.MockInstaller
@@ -151,8 +152,8 @@ var _ = Describe("CreateEnvCmd", func() {
 			userInterface = biui.NewWriterUI(stdOut, stdErr, logger)
 			fs = fakesys.NewFakeFileSystem()
 			fs.EnableStrictTempRootBehavior()
-			deploymentManifestPath = "/path/to/manifest.yml"
-			deploymentStatePath = "/path/to/manifest-state.json"
+			deploymentManifestPath = filepath.Join("/", "path", "to", "manifest.yml")
+			deploymentStatePath = filepath.Join("/", "path", "to", "manifest-state.json")
 			fs.RegisterOpenFile(deploymentManifestPath, &fakesys.FakeFile{
 				Stats: &fakesys.FakeFileStats{FileType: fakesys.FakeFileTypeFile},
 			})
@@ -171,7 +172,7 @@ var _ = Describe("CreateEnvCmd", func() {
 
 			mockAgentClientFactory = mock_httpagent.NewMockAgentClientFactory(mockCtrl)
 			mockAgentClient = mock_agentclient.NewMockAgentClient(mockCtrl)
-			mockAgentClientFactory.EXPECT().NewAgentClient(gomock.Any(), gomock.Any()).Return(mockAgentClient).AnyTimes()
+			mockAgentClientFactory.EXPECT().NewAgentClient(gomock.Any(), gomock.Any(), gomock.Any()).Return(mockAgentClient, nil).AnyTimes()
 
 			mockCloudFactory = mock_cloud.NewMockFactory(mockCtrl)
 
@@ -202,25 +203,26 @@ var _ = Describe("CreateEnvCmd", func() {
 
 			fakeStage = fakebiui.NewFakeStage()
 
-			sha1Calculator = crypto.NewSha1Calculator(fs)
+			algos := []boshcrypto.Algorithm{boshcrypto.DigestAlgorithmSHA1}
+			digestCalculator = crypto.NewDigestCalculator(fs, algos)
 			fakeUUIDGenerator = &fakeuuid.FakeGenerator{}
 
 			var err error
 			manifestSHA = "ed173647f91a1001fa3859cb7857b0318794a7e92b40412146a93bebfb052218c91c0299e7b495470bf67b462722b807e8db7b9df3b59866451efcf4ae9e27a4"
 			Expect(err).ToNot(HaveOccurred())
 
-			cpiReleaseTarballPath = "/release/tarball/path"
+			cpiReleaseTarballPath = filepath.Join("/", "release", "tarball", "path")
 
-			stemcellTarballPath = "/stemcell/tarball/path"
+			stemcellTarballPath = filepath.Join("/", "stemcell", "tarball", "path")
 			extractedStemcell = bistemcell.NewExtractedStemcell(
 				bistemcell.Manifest{
-					ImagePath:       "/stemcell/image/path",
 					Name:            "fake-stemcell-name",
 					Version:         "fake-stemcell-version",
 					SHA1:            "fake-stemcell-sha1",
 					CloudProperties: biproperty.Map{},
 				},
 				"fake-extracted-path",
+				nil,
 				fs,
 			)
 
@@ -320,9 +322,8 @@ var _ = Describe("CreateEnvCmd", func() {
 				stemcellRepo := biconfig.NewStemcellRepo(deploymentStateService, fakeUUIDGenerator)
 				deploymentRecord := deployment.NewRecord(deploymentRepo, releaseRepo, stemcellRepo)
 
-				fakeHTTPClient := fakebihttpclient.NewFakeHTTPClient()
 				tarballCache := bitarball.NewCache("fake-base-path", fs, logger)
-				tarballProvider := bitarball.NewProvider(tarballCache, fs, fakeHTTPClient, sha1Calculator, 1, 0, logger)
+				tarballProvider := bitarball.NewProvider(tarballCache, fs, nil, 1, 0, logger)
 
 				cpiInstaller := bicpirel.CpiInstaller{
 					ReleaseManager:   releaseManager,
@@ -384,7 +385,7 @@ var _ = Describe("CreateEnvCmd", func() {
 
 			command = bicmd.NewCreateEnvCmd(userInterface, doGet)
 
-			expectLegacyMigrate = mockLegacyDeploymentStateMigrator.EXPECT().MigrateIfExists("/path/to/bosh-deployments.yml").AnyTimes()
+			expectLegacyMigrate = mockLegacyDeploymentStateMigrator.EXPECT().MigrateIfExists(filepath.Join("/", "path", "to", "bosh-deployments.yml")).AnyTimes()
 
 			fakeStemcellExtractor.SetExtractBehavior(stemcellTarballPath, extractedStemcell, nil)
 
@@ -440,21 +441,21 @@ var _ = Describe("CreateEnvCmd", func() {
 			It("prints the deployment manifest", func() {
 				err := command.Run(fakeStage, defaultCreateEnvOpts)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(stdOut).To(gbytes.Say("Deployment manifest: '/path/to/manifest.yml'"))
+				Expect(stdOut).To(gbytes.Say("Deployment manifest: '" + regexp.QuoteMeta(filepath.Join("/", "path", "to", "manifest.yml")) + "'"))
 			})
 
 			Context("when state file is NOT specified", func() {
 				It("prints the default state file path", func() {
 					err := command.Run(fakeStage, defaultCreateEnvOpts)
 					Expect(err).NotTo(HaveOccurred())
-					Expect(stdOut).To(gbytes.Say("Deployment state: '/path/to/manifest-state.json'"))
+					Expect(stdOut).To(gbytes.Say("Deployment state: '" + regexp.QuoteMeta(filepath.Join("/", "path", "to", "manifest-state.json")) + "'"))
 				})
 			})
 
 			Context("when state file is specified", func() {
 				It("prints specified state file path", func() {
 					createEnvOptsWithStatePath := bicmd.CreateEnvOpts{
-						StatePath: "/specified/path/to/cool-state.json",
+						StatePath: filepath.Join("/", "specified", "path", "to", "cool-state.json"),
 						Args: bicmd.CreateEnvArgs{
 							Manifest: bicmd.FileBytesWithPathArg{Path: deploymentManifestPath},
 						},
@@ -462,7 +463,7 @@ var _ = Describe("CreateEnvCmd", func() {
 
 					err := command.Run(fakeStage, createEnvOptsWithStatePath)
 					Expect(err).NotTo(HaveOccurred())
-					Expect(stdOut).To(gbytes.Say("Deployment state: '/specified/path/to/cool-state.json'"))
+					Expect(stdOut).To(gbytes.Say("Deployment state: '" + regexp.QuoteMeta(filepath.Join("/", "specified", "path", "to", "cool-state.json")) + "'"))
 				})
 			})
 		})
@@ -488,15 +489,15 @@ var _ = Describe("CreateEnvCmd", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(fakeInstallationParser.ParsePath).To(Equal(deploymentManifestPath))
 
-			Expect(stdOut).To(gbytes.Say("Deployment manifest: '/path/to/manifest.yml'"))
-			Expect(stdOut).To(gbytes.Say("Deployment state: '/path/to/manifest-state.json'"))
-			Expect(stdOut).To(gbytes.Say("Migrated legacy deployments file: '/path/to/bosh-deployments.yml'"))
+			Expect(stdOut).To(gbytes.Say("Deployment manifest: '" + regexp.QuoteMeta(filepath.Join("/", "path", "to", "manifest.yml")) + "'"))
+			Expect(stdOut).To(gbytes.Say("Deployment state: '" + regexp.QuoteMeta(filepath.Join("/", "path", "to", "manifest-state.json")) + "'"))
+			Expect(stdOut).To(gbytes.Say("Migrated legacy deployments file: '" + regexp.QuoteMeta(filepath.Join("/", "path", "to", "bosh-deployments.yml")) + "'"))
 		})
 
 		It("sets the temp root", func() {
 			err := command.Run(fakeStage, defaultCreateEnvOpts)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(fs.TempRootPath).To(Equal("fake-install-dir/fake-installation-id/tmp"))
+			Expect(fs.TempRootPath).To(Equal(filepath.Join("fake-install-dir", "fake-installation-id", "tmp")))
 		})
 
 		Context("when setting the temp root fails", func() {
@@ -696,6 +697,15 @@ var _ = Describe("CreateEnvCmd", func() {
 				Expect(err).NotTo(HaveOccurred())
 				Expect(stdOut).To(gbytes.Say("No deployment, stemcell or release changes. Skipping deploy."))
 			})
+
+			It("deploys if recreate flag is specified", func() {
+				expectDeploy.Times(1)
+
+				defaultCreateEnvOpts.Recreate = true
+
+				err := command.Run(fakeStage, defaultCreateEnvOpts)
+				Expect(err).NotTo(HaveOccurred())
+			})
 		})
 
 		Context("when parsing the cpi deployment manifest fails", func() {
@@ -736,7 +746,7 @@ var _ = Describe("CreateEnvCmd", func() {
 			)
 
 			BeforeEach(func() {
-				otherReleaseTarballPath = "/path/to/other-release.tgz"
+				otherReleaseTarballPath = filepath.Join("/", "path", "to", "other-release.tgz")
 				fs.WriteFileString(otherReleaseTarballPath, "")
 
 				otherRelease = &fakebirel.FakeRelease{}
@@ -891,6 +901,15 @@ var _ = Describe("CreateEnvCmd", func() {
 					err := command.Run(fakeStage, defaultCreateEnvOpts)
 					Expect(err).NotTo(HaveOccurred())
 					Expect(stdOut).To(gbytes.Say("No deployment, stemcell or release changes. Skipping deploy."))
+				})
+
+				It("deploys if recreate flag is specified", func() {
+					expectDeploy.Times(1)
+
+					defaultCreateEnvOpts.Recreate = true
+
+					err := command.Run(fakeStage, defaultCreateEnvOpts)
+					Expect(err).NotTo(HaveOccurred())
 				})
 			})
 		})

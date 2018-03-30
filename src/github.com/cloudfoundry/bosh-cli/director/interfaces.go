@@ -24,12 +24,13 @@ type Director interface {
 	FindTasksByContextId(string) ([]Task, error)
 
 	Events(EventsFilter) ([]Event, error)
+	Event(string) (Event, error)
 
 	Deployments() ([]Deployment, error)
 	FindDeployment(string) (Deployment, error)
 
 	Releases() ([]Release, error)
-	HasRelease(name, version string) (bool, error)
+	HasRelease(name, version string, stemcell OSVersionSlug) (bool, error)
 	FindRelease(ReleaseSlug) (Release, error)
 	FindReleaseSeries(ReleaseSeriesSlug) (ReleaseSeries, error)
 	UploadReleaseURL(url, sha1 string, rebase, fix bool) error
@@ -38,26 +39,42 @@ type Director interface {
 
 	Stemcells() ([]Stemcell, error)
 	HasStemcell(name, version string) (bool, error)
+	StemcellNeedsUpload(StemcellInfo) (bool, bool, error)
 	FindStemcell(StemcellSlug) (Stemcell, error)
 	UploadStemcellURL(url, sha1 string, fix bool) error
 	UploadStemcellFile(file UploadFile, fix bool) error
 
+	LatestConfig(configType string, name string) (Config, error)
+	LatestConfigByID(configID string) (Config, error)
+	ListConfigs(limit int, filter ConfigsFilter) ([]Config, error)
+	UpdateConfig(configType string, name string, content []byte) (Config, error)
+	DeleteConfig(configType string, name string) (bool, error)
+	DeleteConfigByID(configID string) (bool, error)
+	DiffConfig(configType string, name string, manifest []byte) (ConfigDiff, error)
+	DiffConfigByID(fromID string, toID string) (ConfigDiff, error)
+
 	LatestCloudConfig() (CloudConfig, error)
 	UpdateCloudConfig([]byte) error
+	DiffCloudConfig(manifest []byte) (ConfigDiff, error)
 
 	LatestCPIConfig() (CPIConfig, error)
 	UpdateCPIConfig([]byte) error
+	DiffCPIConfig(manifest []byte, noRedact bool) (ConfigDiff, error)
 
-	LatestRuntimeConfig() (RuntimeConfig, error)
-	UpdateRuntimeConfig([]byte) error
+	LatestRuntimeConfig(name string) (RuntimeConfig, error)
+	UpdateRuntimeConfig(name string, manifest []byte) error
+	DiffRuntimeConfig(name string, manifest []byte, noRedact bool) (ConfigDiff, error)
 
-	FindOrphanedDisk(string) (OrphanedDisk, error)
-	OrphanedDisks() ([]OrphanedDisk, error)
+	FindOrphanDisk(string) (OrphanDisk, error)
+	OrphanDisks() ([]OrphanDisk, error)
+	OrphanDisk(string) error
 
 	EnableResurrection(bool) error
 	CleanUp(bool) error
 	DownloadResourceUnchecked(blobstoreID string, out io.Writer) error
 }
+
+var _ Director = &DirectorImpl{}
 
 type UploadFile interface {
 	io.ReadCloser
@@ -94,7 +111,9 @@ type Deployment interface {
 	Diff([]byte, bool) (DeploymentDiff, error)
 
 	Releases() ([]Release, error)
-	ExportRelease(ReleaseSlug, OSVersionSlug) (ExportReleaseResult, error)
+	ExportRelease(ReleaseSlug, OSVersionSlug, []string) (ExportReleaseResult, error)
+
+	Teams() ([]string, error)
 
 	Stemcells() ([]Stemcell, error)
 	VMInfos() ([]VMInfo, error)
@@ -102,7 +121,7 @@ type Deployment interface {
 	InstanceInfos() ([]VMInfo, error)
 
 	Errands() ([]Errand, error)
-	RunErrand(string, bool, bool) ([]ErrandResult, error)
+	RunErrand(string, bool, bool, []InstanceGroupOrInstanceSlug) ([]ErrandResult, error)
 
 	ScanForProblems() ([]Problem, error)
 	ResolveProblems([]ProblemAnswer) error
@@ -246,9 +265,9 @@ type TaskReporter interface {
 	TaskOutputChunk(int, []byte)
 }
 
-//go:generate counterfeiter . OrphanedDisk
+//go:generate counterfeiter . OrphanDisk
 
-type OrphanedDisk interface {
+type OrphanDisk interface {
 	CID() string
 	Size() uint64
 

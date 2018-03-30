@@ -14,7 +14,7 @@ var _ = Describe("SCPArgs", func() {
 	)
 
 	BeforeEach(func() {
-		host = boshdir.Host{Username: "user", Host: "127.0.0.1"}
+		host = boshdir.Host{Username: "user", Host: "127.0.0.1", IndexOrID: "id"}
 	})
 
 	Describe("AllOrInstanceGroupOrInstanceSlug", func() {
@@ -62,7 +62,14 @@ var _ = Describe("SCPArgs", func() {
 			Expect(scpArgs.ForHost(host)).To(Equal([]string{"user@127.0.0.1:arg1", "user@127.0.0.1:arg2"}))
 		})
 
-		It("replaces named host keeping remaining :s", func() {
+		It("wraps host info in brackets for IPv6 addresses", func() {
+			host.Host = "::1"
+
+			scpArgs := NewSCPArgs([]string{"host:arg1"}, false)
+			Expect(scpArgs.ForHost(host)).To(Equal([]string{"user@[::1]:arg1"}))
+		})
+
+		It("replaces named host keeping remaining colons", func() {
 			scpArgs := NewSCPArgs([]string{"host:some:file"}, false)
 			Expect(scpArgs.ForHost(host)).To(Equal([]string{"user@127.0.0.1:some:file"}))
 		})
@@ -70,6 +77,26 @@ var _ = Describe("SCPArgs", func() {
 		It("returns as is if no host info is included", func() {
 			scpArgs := NewSCPArgs([]string{"arg1", "arg2"}, false)
 			Expect(scpArgs.ForHost(host)).To(Equal([]string{"arg1", "arg2"}))
+		})
+
+		It("replaces '((instance_id))' with instance host id", func() {
+			scpArgs := NewSCPArgs([]string{"host:some:file-((instance_id))", "host:file-((instance_id))", "file-((instance_id))"}, false)
+			Expect(scpArgs.ForHost(host)).To(Equal([]string{
+				"user@127.0.0.1:some:file-id", "user@127.0.0.1:file-id", "file-id"}))
+		})
+
+		It("ignores Windows-style drive references", func() {
+			scpArgs := NewSCPArgs([]string{"host:C:\\file", "C:\\localfile"}, false)
+			Expect(scpArgs.ForHost(host)).To(Equal([]string{
+				"user@127.0.0.1:C:\\file", "C:\\localfile",
+			}))
+		})
+
+		It("ignores lowercase Windows-style drive references", func() {
+			scpArgs := NewSCPArgs([]string{"host:c:\\file", "c:\\localfile"}, false)
+			Expect(scpArgs.ForHost(host)).To(Equal([]string{
+				"user@127.0.0.1:c:\\file", "c:\\localfile",
+			}))
 		})
 
 		It("returns empty when it's empty", func() {

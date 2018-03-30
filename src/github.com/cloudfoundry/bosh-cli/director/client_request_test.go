@@ -164,6 +164,19 @@ var _ = Describe("ClientRequest", func() {
 				Expect(resp).ToNot(BeNil())
 			})
 
+			It("includes response body in the error if response errors", func() {
+				server.SetHandler(0, ghttp.CombineHandlers(
+					ghttp.VerifyRequest("GET", "/path"),
+					ghttp.RespondWith(500, "body"),
+				))
+
+				body, resp, err := req.RawGet("/path", nil, nil)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("'body'"))
+				Expect(body).To(BeNil())
+				Expect(resp).ToNot(BeNil())
+			})
+
 			It("does not track downloading", func() {
 				fileReporter := &fakedir.FakeFileReporter{}
 				req = buildReq(fileReporter)
@@ -185,6 +198,22 @@ var _ = Describe("ClientRequest", func() {
 				Expect(resp).ToNot(BeNil())
 
 				Expect(buf.String()).To(Equal("body"))
+			})
+
+			It("is not used if response errors", func() {
+				server.SetHandler(0, ghttp.CombineHandlers(
+					ghttp.VerifyRequest("GET", "/path"),
+					ghttp.RespondWith(500, "body"),
+				))
+
+				buf := bytes.NewBufferString("")
+
+				body, resp, err := req.RawGet("/path", buf, nil)
+				Expect(err).To(HaveOccurred())
+				Expect(body).To(BeEmpty())
+				Expect(resp).ToNot(BeNil())
+
+				Expect(buf.String()).To(Equal(""))
 			})
 
 			It("tracks downloading based on content length", func() {
@@ -374,7 +403,7 @@ var _ = Describe("ClientRequest", func() {
 					TrackUploadStub: func(size int64, reader io.ReadCloser) ui.ReadSeekCloser {
 						Expect(size).To(Equal(int64(8)))
 						Expect(ioutil.ReadAll(reader)).To(Equal([]byte("req-body")))
-						return NoopReadSeekCloser{ioutil.NopCloser(bytes.NewBufferString("req-body"))}
+						return NoopReadSeekCloser{Reader: ioutil.NopCloser(bytes.NewBufferString("req-body"))}
 					},
 				}
 				req = buildReq(fileReporter)
@@ -618,6 +647,48 @@ var _ = Describe("ClientRequest", func() {
 					err := act()
 					Expect(err).To(HaveOccurred())
 					Expect(err.Error()).To(ContainSubstring("Unmarshaling Director response"))
+				})
+			})
+
+			Context("when context id is not set", func() {
+				verifyContextIdNotSet := func(_ http.ResponseWriter, req *http.Request) {
+					_, found := req.Header["X-Bosh-Context-Id"]
+					Expect(found).To(BeFalse())
+				}
+
+				It("does not set a X-Bosh-Context-Id header", func() {
+					server.AppendHandlers(
+						ghttp.CombineHandlers(
+							ghttp.VerifyRequest("DELETE", "/path", ""),
+							ghttp.VerifyBody([]byte("")),
+							verifyContextIdNotSet,
+							ghttp.RespondWith(code, `["val"]`),
+						),
+					)
+
+					err := act()
+					Expect(err).ToNot(HaveOccurred())
+				})
+			})
+
+			Context("when context id set", func() {
+				contextId := "example-context-id"
+				BeforeEach(func() {
+					req = req.WithContext(contextId)
+				})
+
+				It("makes request with correct header", func() {
+					server.AppendHandlers(
+						ghttp.CombineHandlers(
+							ghttp.VerifyRequest("DELETE", "/path", ""),
+							ghttp.VerifyBody([]byte("")),
+							ghttp.VerifyHeaderKV("X-Bosh-Context-Id", contextId),
+							ghttp.RespondWith(code, `["val"]`),
+						),
+					)
+
+					err := act()
+					Expect(err).ToNot(HaveOccurred())
 				})
 			})
 		}

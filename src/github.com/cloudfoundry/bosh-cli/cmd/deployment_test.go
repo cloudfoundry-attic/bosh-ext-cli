@@ -60,7 +60,13 @@ var _ = Describe("DeploymentCmd", func() {
 			Expect(ui.Table).To(Equal(boshtbl.Table{
 				Content: "deployments",
 
-				Header: []string{"Name", "Release(s)", "Stemcell(s)", "Cloud Config"},
+				Header: []boshtbl.Header{
+					boshtbl.NewHeader("Name"),
+					boshtbl.NewHeader("Release(s)"),
+					boshtbl.NewHeader("Stemcell(s)"),
+					boshtbl.NewHeader("Team(s)"),
+					boshtbl.NewHeader("Cloud Config"),
+				},
 
 				SortBy: []boshtbl.ColumnSort{
 					{Column: 0, Asc: true},
@@ -69,6 +75,7 @@ var _ = Describe("DeploymentCmd", func() {
 				Rows: [][]boshtbl.Value{
 					{
 						boshtbl.NewValueString("deployment-name"),
+						boshtbl.NewValueStrings(nil),
 						boshtbl.NewValueStrings(nil),
 						boshtbl.NewValueStrings(nil),
 						boshtbl.NewValueString(""),

@@ -6,10 +6,11 @@ import (
 	"strings"
 	"time"
 
+	"code.cloudfoundry.org/clock"
 	bosherr "github.com/cloudfoundry/bosh-utils/errors"
 	boshhttp "github.com/cloudfoundry/bosh-utils/httpclient"
 	boshlog "github.com/cloudfoundry/bosh-utils/logger"
-	"github.com/pivotal-golang/clock"
+	proxy "github.com/cloudfoundry/socks5-proxy"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -60,8 +61,9 @@ func (s *ClientImpl) Start() error {
 	}
 
 	sshConfig := &ssh.ClientConfig{
-		User: s.opts.User,
-		Auth: authMethods,
+		User:            s.opts.User,
+		Auth:            authMethods,
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
 
 	s.logger.Debug(s.logTag, "Dialing remote server at %s:%d", s.opts.Host, s.opts.Port)
@@ -77,7 +79,7 @@ func (s *ClientImpl) Start() error {
 	for i := 0; ; i++ {
 		s.logger.Debug(s.logTag, "Making attempt #%d", i)
 
-		s.client, err = s.newClient("tcp", fmt.Sprintf("%s:%d", s.opts.Host, s.opts.Port), sshConfig)
+		s.client, err = s.newClient("tcp", net.JoinHostPort(s.opts.Host, fmt.Sprintf("%d", s.opts.Port)), sshConfig)
 		if err == nil {
 			break
 		}
@@ -113,7 +115,8 @@ func (s *ClientImpl) newClient(network, addr string, config *ssh.ClientConfig) (
 	dialFunc := net.Dial
 
 	if !s.opts.DisableSOCKS {
-		dialFunc = boshhttp.SOCKS5DialFuncFromEnvironment(net.Dial)
+		socksProxy := proxy.NewSocks5Proxy(proxy.NewHostKeyGetter())
+		dialFunc = boshhttp.SOCKS5DialFuncFromEnvironment(net.Dial, socksProxy)
 	}
 
 	conn, err := dialFunc(network, addr)

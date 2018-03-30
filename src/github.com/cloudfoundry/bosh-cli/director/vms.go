@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	bosherr "github.com/cloudfoundry/bosh-utils/errors"
 )
@@ -15,19 +16,23 @@ type VMInfo struct {
 	ID           string `json:"id"`
 	Index        *int   `json:"index"`
 	ProcessState string `json:"job_state"` // e.g. "running"
+	Active       *bool  `json:"active"`
 	Bootstrap    bool
 
 	IPs []string `json:"ips"`
 	DNS []string `json:"dns"`
 
-	AZ           string   `json:"az"`
-	State        string   `json:"state"`
-	VMID         string   `json:"vm_cid"`
-	VMType       string   `json:"vm_type"`
-	ResourcePool string   `json:"resource_pool"`
-	DiskID       string   `json:"disk_cid"`
-	Ignore       bool     `json:"ignore"`
-	DiskIDs      []string `json:"disk_cids"`
+	AZ              string      `json:"az"`
+	State           string      `json:"state"`
+	VMID            string      `json:"vm_cid"`
+	VMType          string      `json:"vm_type"`
+	ResourcePool    string      `json:"resource_pool"`
+	DiskID          string      `json:"disk_cid"`
+	Ignore          bool        `json:"ignore"`
+	DiskIDs         []string    `json:"disk_cids"`
+	VMCreatedAtRaw  string      `json:"vm_created_at"`
+	VMCreatedAt     time.Time   `json:"-"`
+	CloudProperties interface{} `json:"cloud_properties"`
 
 	Processes []VMInfoProcess
 
@@ -146,6 +151,11 @@ func (c Client) deploymentResourceInfos(deploymentName string, resourceType stri
 
 		if len(resp.DiskIDs) == 0 && resp.DiskID != "" {
 			resp.DiskIDs = []string{resp.DiskID}
+		}
+
+		resp.VMCreatedAt, err = TimeParser{}.Parse(resp.VMCreatedAtRaw)
+		if err != nil {
+			return resps, bosherr.WrapErrorf(err, "Converting created_at '%s' to time", resp.VMCreatedAtRaw)
 		}
 
 		resps = append(resps, resp)

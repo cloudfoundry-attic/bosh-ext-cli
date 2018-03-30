@@ -42,7 +42,7 @@ func (manager BlobManager) Fetch(blobID string) (boshsys.File, error, int) {
 func (manager BlobManager) Write(blobID string, reader io.Reader) error {
 	blobPath := path.Join(manager.blobstorePath, blobID)
 
-	writeOnlyFile, err := manager.fs.OpenFile(blobPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
+	writeOnlyFile, err := manager.fs.OpenFile(blobPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
 		err = bosherr.WrapError(err, "Opening blob store file")
 		return err
@@ -60,7 +60,7 @@ func (manager BlobManager) Write(blobID string, reader io.Reader) error {
 
 func (manager BlobManager) GetPath(blobID string, digest boshcrypto.Digest) (string, error) {
 	if !manager.BlobExists(blobID) {
-		return "", bosherr.Error(fmt.Sprintf("Blob '%s' not found", blobID))
+		return "", bosherr.Errorf("Blob '%s' not found", blobID)
 	}
 
 	tempFilePath, err := manager.copyToTmpFile(path.Join(manager.blobstorePath, blobID))
@@ -69,11 +69,11 @@ func (manager BlobManager) GetPath(blobID string, digest boshcrypto.Digest) (str
 	}
 
 	file, err := os.Open(tempFilePath)
-	defer file.Close()
 
 	if err != nil {
 		return "", err
 	}
+	defer file.Close()
 
 	err = digest.Verify(file)
 	if err != nil {

@@ -17,6 +17,8 @@ type BoshOpts struct {
 
 	EnvironmentOpt string    `long:"environment" short:"e" description:"Director environment name or URL" env:"BOSH_ENVIRONMENT"`
 	CACertOpt      CACertArg `long:"ca-cert"               description:"Director CA certificate path or value" env:"BOSH_CA_CERT"`
+	Sha2           bool      `long:"sha2"                  description:"Use SHA256 checksums" env:"BOSH_SHA2"`
+	Parallel       int       `long:"parallel" description:"The max number of parallel operations" default:"5"`
 
 	// Hidden
 	UsernameOpt string `long:"user" hidden:"true" env:"BOSH_USER"`
@@ -28,10 +30,11 @@ type BoshOpts struct {
 	DeploymentOpt string `long:"deployment" short:"d" description:"Deployment name" env:"BOSH_DEPLOYMENT"`
 
 	// Output formatting
-	JSONOpt           bool `long:"json"                      description:"Output as JSON"`
-	TTYOpt            bool `long:"tty"                       description:"Force TTY-like output"`
-	NoColorOpt        bool `long:"no-color"                  description:"Toggle colorized output"`
-	NonInteractiveOpt bool `long:"non-interactive" short:"n" description:"Don't ask for user input"`
+	ColumnOpt         []ColumnOpt `long:"column"                    description:"Filter to show only given column(s)"`
+	JSONOpt           bool        `long:"json"                      description:"Output as JSON"`
+	TTYOpt            bool        `long:"tty"                       description:"Force TTY-like output"`
+	NoColorOpt        bool        `long:"no-color"                  description:"Toggle colorized output"`
+	NonInteractiveOpt bool        `long:"non-interactive" short:"n" description:"Don't ask for user input" env:"BOSH_NON_INTERACTIVE"`
 
 	Help HelpOpts `command:"help" description:"Show this help message"`
 
@@ -56,10 +59,13 @@ type BoshOpts struct {
 	// Misc
 	Locks   LocksOpts   `command:"locks"    description:"List current locks"`
 	CleanUp CleanUpOpts `command:"clean-up" description:"Clean up releases, stemcells, disks, etc."`
-	BackUp  BackUpOpts  `command:"back-up"  description:"Back up the Director database to a tarball"`
 
-	// Disks
-	AttachDisk AttachDiskOpts `command:"attach-disk" description:"Attaches an disk to an instance and replaces the current disk"`
+	// Config
+	Config         ConfigOpts       `command:"config" alias:"c" description:"Show current config for either ID or both type and name"`
+	Configs        ConfigsOpts      `command:"configs" alias:"cs" description:"List configs"`
+	UpdateConfig   UpdateConfigOpts `command:"update-config" alias:"uc" description:"Update config"`
+	DeleteConfig   DeleteConfigOpts `command:"delete-config" alias:"dc" description:"Delete config"`
+	DiffConfigByID DiffConfigOpts   `command:"diff-config" description:"Diff two configs by ID"`
 
 	// Cloud config
 	CloudConfig       CloudConfigOpts       `command:"cloud-config"        alias:"cc"  description:"Show current cloud config"`
@@ -78,42 +84,46 @@ type BoshOpts struct {
 	Deployments      DeploymentsOpts      `command:"deployments"       alias:"ds" alias:"deps" description:"List deployments"`
 	DeleteDeployment DeleteDeploymentOpts `command:"delete-deployment" alias:"deld"            description:"Delete deployment"`
 
-	Deploy   DeployOpts   `command:"deploy"   alias:"d"                                       description:"Deploy according to the currently selected deployment manifest"`
-	Manifest ManifestOpts `command:"manifest" alias:"m" alias:"man" alias:"download-manifest" description:"Download deployment manifest locally"`
+	Deploy   DeployOpts   `command:"deploy"   alias:"d"   description:"Update deployment"`
+	Manifest ManifestOpts `command:"manifest" alias:"man" description:"Show deployment manifest"`
 
 	Interpolate InterpolateOpts `command:"interpolate" alias:"int" description:"Interpolates variables into a manifest"`
 
 	// Events
 	Events EventsOpts `command:"events" description:"List events"`
+	Event  EventOpts  `command:"event" description:"Show event details"`
 
 	// Stemcells
-	Stemcells      StemcellsOpts      `command:"stemcells"       alias:"ss" alias:"stems" description:"List stemcells"`
-	UploadStemcell UploadStemcellOpts `command:"upload-stemcell" alias:"us"               description:"Upload stemcell"`
-	DeleteStemcell DeleteStemcellOpts `command:"delete-stemcell" alias:"dels"             description:"Delete stemcell"`
+	Stemcells      StemcellsOpts      `command:"stemcells"       alias:"ss"   description:"List stemcells"`
+	UploadStemcell UploadStemcellOpts `command:"upload-stemcell" alias:"us"   description:"Upload stemcell"`
+	DeleteStemcell DeleteStemcellOpts `command:"delete-stemcell" alias:"dels" description:"Delete stemcell"`
+	RepackStemcell RepackStemcellOpts `command:"repack-stemcell"              description:"Repack stemcell"`
 
 	// Releases
-	Releases       ReleasesOpts       `command:"releases"        alias:"rs" alias:"rels" description:"List releases"`
-	UploadRelease  UploadReleaseOpts  `command:"upload-release"  alias:"ur"              description:"Upload release"`
-	ExportRelease  ExportReleaseOpts  `command:"export-release"  alias:"expr"            description:"Export the compiled release to a tarball"`
-	InspectRelease InspectReleaseOpts `command:"inspect-release" alias:"insr"            description:"List all jobs, packages, and compiled packages associated with a release"`
-	DeleteRelease  DeleteReleaseOpts  `command:"delete-release"  alias:"delr"            description:"Delete release"`
+	Releases       ReleasesOpts       `command:"releases"        alias:"rs"   description:"List releases"`
+	UploadRelease  UploadReleaseOpts  `command:"upload-release"  alias:"ur"   description:"Upload release"`
+	ExportRelease  ExportReleaseOpts  `command:"export-release"               description:"Export the compiled release to a tarball"`
+	InspectRelease InspectReleaseOpts `command:"inspect-release"              description:"List release contents such as jobs"`
+	DeleteRelease  DeleteReleaseOpts  `command:"delete-release"  alias:"delr" description:"Delete release"`
 
 	// Errands
-	Errands   ErrandsOpts   `command:"errands"    alias:"es" alias:"errs" description:"List errands"`
-	RunErrand RunErrandOpts `command:"run-errand" alias:"re"              description:"Run errand"`
+	Errands   ErrandsOpts   `command:"errands"    alias:"es" description:"List errands"`
+	RunErrand RunErrandOpts `command:"run-errand"            description:"Run errand"`
 
 	// Disks
 	Disks      DisksOpts      `command:"disks"       description:"List disks"`
+	AttachDisk AttachDiskOpts `command:"attach-disk" description:"Attaches disk to an instance"`
 	DeleteDisk DeleteDiskOpts `command:"delete-disk" description:"Delete disk"`
+	OrphanDisk OrphanDiskOpts `command:"orphan-disk" description:"Orphan disk"`
 
 	// Snapshots
-	Snapshots       SnapshotsOpts       `command:"snapshots"        alias:"snaps"    description:"List snapshots"`
-	TakeSnapshot    TakeSnapshotOpts    `command:"take-snapshot"    alias:"tsnap"    description:"Take snapshot"`
-	DeleteSnapshot  DeleteSnapshotOpts  `command:"delete-snapshot"  alias:"delsnap"  description:"Delete snapshot"`
-	DeleteSnapshots DeleteSnapshotsOpts `command:"delete-snapshots" alias:"delsnaps" description:"Delete all snapshots in a deployment"`
+	Snapshots       SnapshotsOpts       `command:"snapshots"        description:"List snapshots"`
+	TakeSnapshot    TakeSnapshotOpts    `command:"take-snapshot"    description:"Take snapshot"`
+	DeleteSnapshot  DeleteSnapshotOpts  `command:"delete-snapshot"  description:"Delete snapshot"`
+	DeleteSnapshots DeleteSnapshotsOpts `command:"delete-snapshots" description:"Delete all snapshots in a deployment"`
 
 	// Instances
-	Instances          InstancesOpts          `command:"instances"       alias:"is" alias:"ins"         description:"List all instances in a deployment"`
+	Instances          InstancesOpts          `command:"instances"       alias:"is"                     description:"List all instances in a deployment"`
 	VMs                VMsOpts                `command:"vms"                                            description:"List all VMs in all deployments"`
 	UpdateResurrection UpdateResurrectionOpts `command:"update-resurrection"                            description:"Enable/disable resurrection"`
 	Ignore             IgnoreOpts             `command:"ignore"                                         description:"Ignore an instance"`
@@ -121,11 +131,11 @@ type BoshOpts struct {
 	CloudCheck         CloudCheckOpts         `command:"cloud-check"     alias:"cck" alias:"cloudcheck" description:"Cloud consistency check and interactive repair"`
 
 	// Instance management
-	Logs     LogsOpts     `command:"logs"     description:"Fetch logs from instance(s)"`
-	Start    StartOpts    `command:"start"    description:"Start instance(s)"`
-	Stop     StopOpts     `command:"stop"     description:"Stop instance(s)"`
-	Restart  RestartOpts  `command:"restart"  description:"Restart instance(s)"`
-	Recreate RecreateOpts `command:"recreate" description:"Recreate instance(s)"`
+	Logs     LogsOpts     `command:"logs"      description:"Fetch logs from instance(s)"`
+	Start    StartOpts    `command:"start"     description:"Start instance(s)"`
+	Stop     StopOpts     `command:"stop"      description:"Stop instance(s)"`
+	Restart  RestartOpts  `command:"restart"   description:"Restart instance(s)"`
+	Recreate RecreateOpts `command:"recreate"  description:"Recreate instance(s)"`
 	DeleteVM DeleteVMOpts `command:"delete-vm" description:"Delete VM"`
 
 	// SSH instance
@@ -135,12 +145,17 @@ type BoshOpts struct {
 	// -----> Release authoring
 
 	// Release creation
-	InitRelease     InitReleaseOpts     `command:"init-release"                  description:"Initialize release"`
-	ResetRelease    ResetReleaseOpts    `command:"reset-release"                 description:"Reset release"`
-	GenerateJob     GenerateJobOpts     `command:"generate-job"                  description:"Generate job"`
-	GeneratePackage GeneratePackageOpts `command:"generate-package"              description:"Generate package"`
-	CreateRelease   CreateReleaseOpts   `command:"create-release"   alias:"cr"   description:"Create release"`
-	FinalizeRelease FinalizeReleaseOpts `command:"finalize-release" alias:"finr" description:"Create final release from dev release tarball"`
+	InitRelease     InitReleaseOpts     `command:"init-release"                description:"Initialize release"`
+	ResetRelease    ResetReleaseOpts    `command:"reset-release"               description:"Reset release"`
+	GenerateJob     GenerateJobOpts     `command:"generate-job"                description:"Generate job"`
+	GeneratePackage GeneratePackageOpts `command:"generate-package"            description:"Generate package"`
+	CreateRelease   CreateReleaseOpts   `command:"create-release"   alias:"cr" description:"Create release"`
+	VendorPackage   VendorPackageOpts   `command:"vendor-package"              description:"Vendor package"`
+
+	// Hidden
+	Sha1ifyRelease  Sha1ifyReleaseOpts  `command:"sha1ify-release"  hidden:"true" description:"Convert release tarball to use SHA1"`
+	Sha2ifyRelease  Sha2ifyReleaseOpts  `command:"sha2ify-release"  hidden:"true" description:"Convert release tarball to use SHA256"`
+	FinalizeRelease FinalizeReleaseOpts `command:"finalize-release"               description:"Create final release from dev release tarball"`
 
 	// Blob management
 	Blobs       BlobsOpts       `command:"blobs"        description:"List blobs"`
@@ -162,6 +177,7 @@ type CreateEnvOpts struct {
 	VarFlags
 	OpsFlags
 	StatePath string `long:"state" value-name:"PATH" description:"State file path"`
+	Recreate  bool   `long:"recreate" description:"Recreate VM in deployment"`
 	cmd
 }
 
@@ -220,7 +236,8 @@ type TaskOpts struct {
 	Debug  bool `long:"debug"  description:"Track debug log"`
 	Result bool `long:"result" description:"Track result log"`
 
-	All bool `long:"all" short:"a" description:"Include all task types (ssh, logs, vms, etc)"`
+	All        bool `long:"all" short:"a" description:"Include all task types (ssh, logs, vms, etc)"`
+	Deployment string
 
 	cmd
 }
@@ -259,18 +276,6 @@ type AttachDiskOpts struct {
 	cmd
 }
 
-type BackUpOpts struct {
-	Args BackUpArgs `positional-args:"true" required:"true"`
-
-	Force bool `long:"force" description:"Overwrite if the backup file already exists"`
-
-	cmd
-}
-
-type BackUpArgs struct {
-	Path string `positional-arg-name:"PATH"`
-}
-
 type AttachDiskArgs struct {
 	Slug    boshdir.InstanceSlug `positional-arg-name:"INSTANCE-GROUP/INSTANCE-ID"`
 	DiskCID string               `positional-arg-name:"DISK-CID"`
@@ -291,6 +296,63 @@ type InterpolateOpts struct {
 
 type InterpolateArgs struct {
 	Manifest FileBytesArg `positional-arg-name:"PATH" description:"Path to a template that will be interpolated"`
+}
+
+// Config
+type ConfigOpts struct {
+	Args ConfigArgs `positional-args:"true"`
+	Name string     `long:"name" description:"Config name"`
+	Type string     `long:"type" description:"Config type"`
+
+	cmd
+}
+
+type ConfigArgs struct {
+	ID string `positional-arg-name:"ID" description:"Config ID"`
+}
+
+type ConfigsOpts struct {
+	Name   string `long:"name" description:"Config name" optional:"true"`
+	Type   string `long:"type" description:"Config type" optional:"true"`
+	Recent int    `long:"recent" short:"r" description:"Number of configs to show" optional:"true" optional-value:"1" default:"1"`
+
+	cmd
+}
+
+type DiffConfigOpts struct {
+	Args DiffConfigArgs `positional-args:"true" required:"true"`
+
+	cmd
+}
+
+type DiffConfigArgs struct {
+	FromID string `positional-arg-name:"FROM" description:"ID of first config to compare"`
+	ToID   string `positional-arg-name:"TO" description:"ID of second config to compare"`
+}
+
+type UpdateConfigOpts struct {
+	Args UpdateConfigArgs `positional-args:"true" required:"true"`
+	Type string           `long:"type" required:"true" description:"Config type, e.g. 'cloud', 'runtime', or 'cpi'"`
+	Name string           `long:"name" required:"true" description:"Config name"`
+	VarFlags
+	OpsFlags
+	cmd
+}
+
+type UpdateConfigArgs struct {
+	Config FileBytesArg `positional-arg-name:"PATH" description:"Path to a YAML config file"`
+}
+
+type DeleteConfigOpts struct {
+	Args DeleteConfigArgs `positional-args:"true"`
+	Type string           `long:"type" description:"Config type, e.g. 'cloud', 'runtime', or 'cpi'"`
+	Name string           `long:"name" description:"Config name"`
+
+	cmd
+}
+
+type DeleteConfigArgs struct {
+	ID string `positional-arg-name:"ID" description:"Config ID"`
 }
 
 // Cloud config
@@ -317,6 +379,9 @@ type UpdateCPIConfigOpts struct {
 	Args UpdateCPIConfigArgs `positional-args:"true" required:"true"`
 	VarFlags
 	OpsFlags
+
+	NoRedact bool `long:"no-redact" description:"Show non-redacted manifest diff"`
+
 	cmd
 }
 
@@ -326,6 +391,7 @@ type UpdateCPIConfigArgs struct {
 
 // Runtime config
 type RuntimeConfigOpts struct {
+	Name string `long:"name" description:"Runtime-Config name (default: '')" default:""`
 	cmd
 }
 
@@ -333,6 +399,10 @@ type UpdateRuntimeConfigOpts struct {
 	Args UpdateRuntimeConfigArgs `positional-args:"true" required:"true"`
 	VarFlags
 	OpsFlags
+
+	NoRedact bool   `long:"no-redact" description:"Show non-redacted manifest diff"`
+	Name     string `long:"name" description:"Runtime-Config name (default: '')" default:""`
+
 	cmd
 }
 
@@ -393,9 +463,19 @@ type EventsOpts struct {
 	User       string `long:"event-user"   description:"Show events with given user"`
 	Action     string `long:"action"       description:"Show events with given action"`
 	ObjectType string `long:"object-type"  description:"Show events with given object type"`
-	ObjectName string `long:"object-id"    description:"Show events with given object ID"`
+	ObjectName string `long:"object-name"  description:"Show events with given object name"`
 
 	cmd
+}
+
+type EventOpts struct {
+	Args EventArgs `positional-args:"true" required:"true"`
+
+	cmd
+}
+
+type EventArgs struct {
+	ID string `positional-arg-name:"ID"`
 }
 
 // Stemcells
@@ -432,6 +512,22 @@ type DeleteStemcellArgs struct {
 	Slug boshdir.StemcellSlug `positional-arg-name:"NAME/VERSION"`
 }
 
+type RepackStemcellOpts struct {
+	Args            RepackStemcellArgs `positional-args:"true" required:"true"`
+	Name            string             `long:"name" description:"Repacked stemcell name"`
+	CloudProperties string             `long:"cloud-properties" description:"Repacked stemcell cloud properties"`
+	EmptyImage      bool               `long:"empty-image" description:"Pack zero byte file instead of image"`
+	Format          []string           `long:"format" description:"Repacked stemcell formats. Can be used multiple times. Overrides existing formats."`
+	Version         string             `long:"version" description:"Repacked stemcell version"`
+
+	cmd
+}
+
+type RepackStemcellArgs struct {
+	PathToStemcell string  `positional-arg-name:"PATH-TO-STEMCELL" description:"Path to stemcell"`
+	PathToResult   FileArg `positional-arg-name:"PATH-TO-RESULT" description:"Path to repacked stemcell"`
+}
+
 // Releases
 type ReleasesOpts struct {
 	cmd
@@ -450,6 +546,8 @@ type UploadReleaseOpts struct {
 	Version VersionArg `long:"version"  description:"Version used in existence check (is not used with local release file)"`
 
 	SHA1 string `long:"sha1" description:"SHA1 of the remote release (is not used with local files)"`
+
+	Stemcell boshdir.OSVersionSlug `long:"stemcell" value-name:"OS/VERSION" description:"Stemcell that the release is compiled against (applies to remote releases)"`
 
 	Release boshrel.Release
 
@@ -477,6 +575,7 @@ type ExportReleaseOpts struct {
 
 	Directory DirOrCWDArg `long:"dir" description:"Destination directory" default:"."`
 
+	Jobs []string `long:"job" description:"Name of job to export"`
 	cmd
 }
 
@@ -499,8 +598,14 @@ type ErrandsOpts struct {
 	cmd
 }
 
+type InstanceGroupOrInstanceSlugFlags struct {
+	Slugs []boshdir.InstanceGroupOrInstanceSlug `long:"instance" value-name:"INSTANCE-GROUP[/INSTANCE-ID]" description:"Instance or group the errand should run on (must specify errand by release job name)"`
+}
+
 type RunErrandOpts struct {
 	Args RunErrandArgs `positional-args:"true" required:"true"`
+
+	InstanceGroupOrInstanceSlugFlags
 
 	KeepAlive   bool `long:"keep-alive" description:"Use existing VM to run an errand and keep it after completion"`
 	WhenChanged bool `long:"when-changed" description:"Run errand only if errand configuration has changed or if the previous run was unsuccessful"`
@@ -527,6 +632,14 @@ type DeleteDiskOpts struct {
 }
 
 type DeleteDiskArgs struct {
+	CID string `positional-arg-name:"CID"`
+}
+
+type OrphanDiskOpts struct {
+	Args OrphanDiskArgs `positional-args:"true" required:"true"`
+	cmd
+}
+type OrphanDiskArgs struct {
 	CID string `positional-arg-name:"CID"`
 }
 
@@ -579,15 +692,17 @@ type InstancesOpts struct {
 }
 
 type VMsOpts struct {
-	DNS        bool `long:"dns"               description:"Show DNS A records"`
-	Vitals     bool `long:"vitals"            description:"Show vitals"`
-	Deployment string
+	DNS             bool `long:"dns"               description:"Show DNS A records"`
+	Vitals          bool `long:"vitals"            description:"Show vitals"`
+	CloudProperties bool `long:"cloud-properties"  description:"Show cloud properties"`
+	Deployment      string
 	cmd
 }
 
 type CloudCheckOpts struct {
-	Auto   bool `long:"auto"   short:"a" description:"Resolve problems automatically"`
-	Report bool `long:"report" short:"r" description:"Only generate report; don't attempt to resolve problems"`
+	Auto        bool     `long:"auto"       short:"a" description:"Resolve problems automatically"`
+	Resolutions []string `long:"resolution"           description:"Apply resolution of given type"`
+	Report      bool     `long:"report"     short:"r" description:"Only generate report; don't attempt to resolve problems"`
 	cmd
 }
 
@@ -765,6 +880,36 @@ type GeneratePackageArgs struct {
 	Name string `positional-arg-name:"NAME"`
 }
 
+type VendorPackageOpts struct {
+	Args VendorPackageArgs `positional-args:"true" required:"true"`
+
+	Directory DirOrCWDArg `long:"dir" description:"Release directory path if not current working directory" default:"."`
+
+	cmd
+}
+
+type VendorPackageArgs struct {
+	PackageName string      `positional-arg-name:"PACKAGE"`
+	URL         DirOrCWDArg `positional-arg-name:"SRC-DIR" default:"."`
+}
+
+type Sha1ifyReleaseOpts struct {
+	Args RedigestReleaseArgs `positional-args:"true"`
+
+	cmd
+}
+
+type Sha2ifyReleaseOpts struct {
+	Args RedigestReleaseArgs `positional-args:"true"`
+
+	cmd
+}
+
+type RedigestReleaseArgs struct {
+	Path        string  `positional-arg-name:"PATH"`
+	Destination FileArg `positional-arg-name:"DESTINATION"`
+}
+
 type CreateReleaseOpts struct {
 	Args CreateReleaseArgs `positional-args:"true"`
 
@@ -774,9 +919,9 @@ type CreateReleaseOpts struct {
 	Version          VersionArg `long:"version"            description:"Custom release version (e.g.: 1.0.0, 1.0-beta.2+dev.10)"`
 	TimestampVersion bool       `long:"timestamp-version"  description:"Create release with the timestamp as the dev version (e.g.: 1+dev.TIMESTAMP)"`
 
-	Final   bool   `long:"final"   description:"Make it a final release"`
-	Tarball string `long:"tarball" description:"Create release tarball at path (e.g. /tmp/release.tgz)"`
-	Force   bool   `long:"force"   description:"Ignore Git dirty state check"`
+	Final   bool    `long:"final"   description:"Make it a final release"`
+	Tarball FileArg `long:"tarball" description:"Create release tarball at path (e.g. /tmp/release.tgz)"`
+	Force   bool    `long:"force"   description:"Ignore Git dirty state check"`
 
 	cmd
 }
@@ -834,8 +979,7 @@ type RemoveBlobArgs struct {
 }
 
 type SyncBlobsOpts struct {
-	Directory   DirOrCWDArg `long:"dir" description:"Release directory path if not current working directory" default:"."`
-	ParallelOpt int         `long:"parallel" description:"Sets the max number of parallel downloads" default:"5"`
+	Directory DirOrCWDArg `long:"dir" description:"Release directory path if not current working directory" default:"."`
 	cmd
 }
 

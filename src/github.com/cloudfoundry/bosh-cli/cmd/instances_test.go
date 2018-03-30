@@ -2,6 +2,7 @@ package cmd_test
 
 import (
 	"errors"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -11,6 +12,7 @@ import (
 	fakedir "github.com/cloudfoundry/bosh-cli/director/directorfakes"
 	fakeui "github.com/cloudfoundry/bosh-cli/ui/fakes"
 	boshtbl "github.com/cloudfoundry/bosh-cli/ui/table"
+	bosherr "github.com/cloudfoundry/bosh-utils/errors"
 )
 
 var _ = Describe("InstancesCmd", func() {
@@ -23,7 +25,7 @@ var _ = Describe("InstancesCmd", func() {
 	BeforeEach(func() {
 		ui = &fakeui.FakeUI{}
 		director = &fakedir.FakeDirector{}
-		command = NewInstancesCmd(ui, director)
+		command = NewInstancesCmd(ui, director, 1)
 	})
 
 	Describe("Run", func() {
@@ -65,6 +67,7 @@ var _ = Describe("InstancesCmd", func() {
 					ResurrectionPaused: false,
 					Ignore:             true,
 					DiskIDs:            []string{"diskcid1", "diskcid2"},
+					VMCreatedAt:        time.Date(2016, time.January, 9, 6, 23, 25, 0, time.UTC),
 
 					Vitals: boshdir.VMInfoVitals{
 						Load: []string{"0.02", "0.06", "0.11"},
@@ -118,6 +121,7 @@ var _ = Describe("InstancesCmd", func() {
 					ResurrectionPaused: true,
 					Ignore:             false,
 					DiskIDs:            []string{"diskcid1", "diskcid2"},
+					VMCreatedAt:        time.Date(2016, time.January, 9, 6, 23, 25, 0, time.UTC),
 
 					Vitals: boshdir.VMInfoVitals{
 						Load: []string{"0.52", "0.56", "0.51"},
@@ -183,11 +187,11 @@ var _ = Describe("InstancesCmd", func() {
 
 							Content: "instances",
 
-							HeaderVals: []boshtbl.Value{
-								boshtbl.NewValueString("Instance"),
-								boshtbl.NewValueString("Process State"),
-								boshtbl.NewValueString("AZ"),
-								boshtbl.NewValueString("IPs"),
+							Header: []boshtbl.Header{
+								boshtbl.NewHeader("Instance"),
+								boshtbl.NewHeader("Process State"),
+								boshtbl.NewHeader("AZ"),
+								boshtbl.NewHeader("IPs"),
 							},
 
 							SortBy: []boshtbl.ColumnSort{
@@ -214,11 +218,11 @@ var _ = Describe("InstancesCmd", func() {
 
 							Content: "instances",
 
-							HeaderVals: []boshtbl.Value{
-								boshtbl.NewValueString("Instance"),
-								boshtbl.NewValueString("Process State"),
-								boshtbl.NewValueString("AZ"),
-								boshtbl.NewValueString("IPs"),
+							Header: []boshtbl.Header{
+								boshtbl.NewHeader("Instance"),
+								boshtbl.NewHeader("Process State"),
+								boshtbl.NewHeader("AZ"),
+								boshtbl.NewHeader("IPs"),
 							},
 
 							SortBy: []boshtbl.ColumnSort{
@@ -295,11 +299,11 @@ var _ = Describe("InstancesCmd", func() {
 						Title:   "Deployment 'dep'",
 						Content: "instances",
 
-						HeaderVals: []boshtbl.Value{
-							boshtbl.NewValueString("Instance"),
-							boshtbl.NewValueString("Process State"),
-							boshtbl.NewValueString("AZ"),
-							boshtbl.NewValueString("IPs"),
+						Header: []boshtbl.Header{
+							boshtbl.NewHeader("Instance"),
+							boshtbl.NewHeader("Process State"),
+							boshtbl.NewHeader("AZ"),
+							boshtbl.NewHeader("IPs"),
 						},
 
 						SortBy: []boshtbl.ColumnSort{
@@ -354,12 +358,12 @@ var _ = Describe("InstancesCmd", func() {
 						Title:   "Deployment 'dep'",
 						Content: "instances",
 
-						HeaderVals: []boshtbl.Value{
-							boshtbl.NewValueString("Instance"),
-							boshtbl.NewValueString("Process"),
-							boshtbl.NewValueString("Process State"),
-							boshtbl.NewValueString("AZ"),
-							boshtbl.NewValueString("IPs"),
+						Header: []boshtbl.Header{
+							boshtbl.NewHeader("Instance"),
+							boshtbl.NewHeader("Process"),
+							boshtbl.NewHeader("Process State"),
+							boshtbl.NewHeader("AZ"),
+							boshtbl.NewHeader("IPs"),
 						},
 
 						SortBy: []boshtbl.ColumnSort{
@@ -438,20 +442,20 @@ var _ = Describe("InstancesCmd", func() {
 						Title:   "Deployment 'dep'",
 						Content: "instances",
 
-						HeaderVals: []boshtbl.Value{
-							boshtbl.NewValueString("Instance"),
-							boshtbl.NewValueString("Process State"),
-							boshtbl.NewValueString("AZ"),
-							boshtbl.NewValueString("IPs"),
-							boshtbl.NewValueString("State"),
-							boshtbl.NewValueString("VM CID"),
-							boshtbl.NewValueString("VM Type"),
-							boshtbl.NewValueString("Disk CIDs"),
-							boshtbl.NewValueString("Agent ID"),
-							boshtbl.NewValueString("Index"),
-							boshtbl.NewValueString("Resurrection\nPaused"),
-							boshtbl.NewValueString("Bootstrap"),
-							boshtbl.NewValueString("Ignore"),
+						Header: []boshtbl.Header{
+							boshtbl.NewHeader("Instance"),
+							boshtbl.NewHeader("Process State"),
+							boshtbl.NewHeader("AZ"),
+							boshtbl.NewHeader("IPs"),
+							boshtbl.NewHeader("State"),
+							boshtbl.NewHeader("VM CID"),
+							boshtbl.NewHeader("VM Type"),
+							boshtbl.NewHeader("Disk CIDs"),
+							boshtbl.NewHeader("Agent ID"),
+							boshtbl.NewHeader("Index"),
+							boshtbl.NewHeader("Resurrection\nPaused"),
+							boshtbl.NewHeader("Bootstrap"),
+							boshtbl.NewHeader("Ignore"),
 						},
 
 						SortBy: []boshtbl.ColumnSort{
@@ -533,12 +537,12 @@ var _ = Describe("InstancesCmd", func() {
 						Title:   "Deployment 'dep'",
 						Content: "instances",
 
-						HeaderVals: []boshtbl.Value{
-							boshtbl.NewValueString("Instance"),
-							boshtbl.NewValueString("Process State"),
-							boshtbl.NewValueString("AZ"),
-							boshtbl.NewValueString("IPs"),
-							boshtbl.NewValueString("DNS A Records"),
+						Header: []boshtbl.Header{
+							boshtbl.NewHeader("Instance"),
+							boshtbl.NewHeader("Process State"),
+							boshtbl.NewHeader("AZ"),
+							boshtbl.NewHeader("IPs"),
+							boshtbl.NewHeader("DNS A Records"),
 						},
 
 						SortBy: []boshtbl.ColumnSort{
@@ -597,23 +601,24 @@ var _ = Describe("InstancesCmd", func() {
 						Title:   "Deployment 'dep'",
 						Content: "instances",
 
-						HeaderVals: []boshtbl.Value{
-							boshtbl.NewValueString("Instance"),
-							boshtbl.NewValueString("Process"),
-							boshtbl.NewValueString("Process State"),
-							boshtbl.NewValueString("AZ"),
-							boshtbl.NewValueString("IPs"),
-							boshtbl.NewValueString("Uptime"),
-							boshtbl.NewValueString("Load\n(1m, 5m, 15m)"),
-							boshtbl.NewValueString("CPU\nTotal"),
-							boshtbl.NewValueString("CPU\nUser"),
-							boshtbl.NewValueString("CPU\nSys"),
-							boshtbl.NewValueString("CPU\nWait"),
-							boshtbl.NewValueString("Memory\nUsage"),
-							boshtbl.NewValueString("Swap\nUsage"),
-							boshtbl.NewValueString("System\nDisk Usage"),
-							boshtbl.NewValueString("Ephemeral\nDisk Usage"),
-							boshtbl.NewValueString("Persistent\nDisk Usage"),
+						Header: []boshtbl.Header{
+							boshtbl.NewHeader("Instance"),
+							boshtbl.NewHeader("Process"),
+							boshtbl.NewHeader("Process State"),
+							boshtbl.NewHeader("AZ"),
+							boshtbl.NewHeader("IPs"),
+							boshtbl.NewHeader("VM Created At"),
+							boshtbl.NewHeader("Uptime"),
+							boshtbl.NewHeader("Load\n(1m, 5m, 15m)"),
+							boshtbl.NewHeader("CPU\nTotal"),
+							boshtbl.NewHeader("CPU\nUser"),
+							boshtbl.NewHeader("CPU\nSys"),
+							boshtbl.NewHeader("CPU\nWait"),
+							boshtbl.NewHeader("Memory\nUsage"),
+							boshtbl.NewHeader("Swap\nUsage"),
+							boshtbl.NewHeader("System\nDisk Usage"),
+							boshtbl.NewHeader("Ephemeral\nDisk Usage"),
+							boshtbl.NewHeader("Persistent\nDisk Usage"),
 						},
 
 						SortBy: []boshtbl.ColumnSort{
@@ -631,17 +636,18 @@ var _ = Describe("InstancesCmd", func() {
 										boshtbl.NewValueFmt(boshtbl.NewValueString("in1-process-state"), true),
 										boshtbl.ValueString{},
 										boshtbl.NewValueStrings([]string{"in1-ip1", "in1-ip2"}),
+										boshtbl.NewValueTime(time.Date(2016, time.January, 9, 6, 23, 25, 0, time.UTC)),
 										ValueUptime{},
 										boshtbl.NewValueString("0.02, 0.06, 0.11"),
 										ValueCPUTotal{},
 										NewValueStringPercent("1.2"),
 										NewValueStringPercent("0.3"),
 										NewValueStringPercent("2.1"),
-										ValueMemSize{boshdir.VMInfoVitalsMemSize{Percent: "20", KB: "2000"}},
-										ValueMemSize{boshdir.VMInfoVitalsMemSize{Percent: "21", KB: "2100"}},
-										ValueDiskSize{boshdir.VMInfoVitalsDiskSize{Percent: "35"}},
-										ValueDiskSize{boshdir.VMInfoVitalsDiskSize{Percent: "45"}},
-										ValueDiskSize{boshdir.VMInfoVitalsDiskSize{Percent: "55"}},
+										ValueMemSize{Size: boshdir.VMInfoVitalsMemSize{Percent: "20", KB: "2000"}},
+										ValueMemSize{Size: boshdir.VMInfoVitalsMemSize{Percent: "21", KB: "2100"}},
+										ValueDiskSize{Size: boshdir.VMInfoVitalsDiskSize{Percent: "35"}},
+										ValueDiskSize{Size: boshdir.VMInfoVitalsDiskSize{Percent: "45"}},
+										ValueDiskSize{Size: boshdir.VMInfoVitalsDiskSize{Percent: "55"}},
 									},
 									{
 										boshtbl.ValueString{},
@@ -649,13 +655,14 @@ var _ = Describe("InstancesCmd", func() {
 										boshtbl.NewValueFmt(boshtbl.NewValueString("in1-proc1-state"), true),
 										nil,
 										nil,
-										ValueUptime{&procUptime},
 										nil,
-										ValueCPUTotal{&procCPUTotal},
+										ValueUptime{Secs: &procUptime},
+										nil,
+										ValueCPUTotal{Total: &procCPUTotal},
 										nil,
 										nil,
 										nil,
-										ValueMemIntSize{boshdir.VMInfoVitalsMemIntSize{Percent: &procMemPercent, KB: &procMemKB}},
+										ValueMemIntSize{Size: boshdir.VMInfoVitalsMemIntSize{Percent: &procMemPercent, KB: &procMemKB}},
 										nil,
 										nil,
 										nil,
@@ -665,6 +672,7 @@ var _ = Describe("InstancesCmd", func() {
 										boshtbl.ValueString{},
 										boshtbl.NewValueString("in1-proc2-name"),
 										boshtbl.NewValueFmt(boshtbl.NewValueString("in1-proc2-state"), true),
+										nil,
 										nil,
 										nil,
 										ValueUptime{},
@@ -690,22 +698,24 @@ var _ = Describe("InstancesCmd", func() {
 										boshtbl.NewValueFmt(boshtbl.NewValueString("in2-process-state"), true),
 										boshtbl.NewValueString("in2-az"),
 										boshtbl.NewValueStrings([]string{"in2-ip1"}),
+										boshtbl.NewValueTime(time.Date(2016, time.January, 9, 6, 23, 25, 0, time.UTC)),
 										ValueUptime{},
 										boshtbl.NewValueString("0.52, 0.56, 0.51"),
 										ValueCPUTotal{},
 										NewValueStringPercent("51.2"),
 										NewValueStringPercent("50.3"),
 										NewValueStringPercent("52.1"),
-										ValueMemSize{boshdir.VMInfoVitalsMemSize{Percent: "60", KB: "6000"}},
-										ValueMemSize{boshdir.VMInfoVitalsMemSize{Percent: "61", KB: "6100"}},
-										ValueDiskSize{boshdir.VMInfoVitalsDiskSize{Percent: "75"}},
-										ValueDiskSize{boshdir.VMInfoVitalsDiskSize{Percent: "85"}},
-										ValueDiskSize{boshdir.VMInfoVitalsDiskSize{Percent: "95"}},
+										ValueMemSize{Size: boshdir.VMInfoVitalsMemSize{Percent: "60", KB: "6000"}},
+										ValueMemSize{Size: boshdir.VMInfoVitalsMemSize{Percent: "61", KB: "6100"}},
+										ValueDiskSize{Size: boshdir.VMInfoVitalsDiskSize{Percent: "75"}},
+										ValueDiskSize{Size: boshdir.VMInfoVitalsDiskSize{Percent: "85"}},
+										ValueDiskSize{Size: boshdir.VMInfoVitalsDiskSize{Percent: "95"}},
 									},
 									{
 										boshtbl.ValueString{},
 										boshtbl.NewValueString("in2-proc1-name"),
 										boshtbl.NewValueFmt(boshtbl.NewValueString("in2-proc1-state"), true),
+										nil,
 										nil,
 										nil,
 										ValueUptime{},
@@ -731,6 +741,7 @@ var _ = Describe("InstancesCmd", func() {
 										boshtbl.NewValueFmt(boshtbl.NewValueString("unresponsive agent"), true),
 										boshtbl.ValueString{},
 										boshtbl.ValueStrings{},
+										boshtbl.NewValueTime(time.Time{}.UTC()),
 										ValueUptime{},
 										boshtbl.ValueString{},
 										ValueCPUTotal{},
@@ -762,11 +773,11 @@ var _ = Describe("InstancesCmd", func() {
 						Title:   "Deployment 'dep'",
 						Content: "instances",
 
-						HeaderVals: []boshtbl.Value{
-							boshtbl.NewValueString("Instance"),
-							boshtbl.NewValueString("Process State"),
-							boshtbl.NewValueString("AZ"),
-							boshtbl.NewValueString("IPs"),
+						Header: []boshtbl.Header{
+							boshtbl.NewHeader("Instance"),
+							boshtbl.NewHeader("Process State"),
+							boshtbl.NewHeader("AZ"),
+							boshtbl.NewHeader("IPs"),
 						},
 
 						SortBy: []boshtbl.ColumnSort{
@@ -818,12 +829,12 @@ var _ = Describe("InstancesCmd", func() {
 						Title:   "Deployment 'dep'",
 						Content: "instances",
 
-						HeaderVals: []boshtbl.Value{
-							boshtbl.NewValueString("Instance"),
-							boshtbl.NewValueString("Process"),
-							boshtbl.NewValueString("Process State"),
-							boshtbl.NewValueString("AZ"),
-							boshtbl.NewValueString("IPs"),
+						Header: []boshtbl.Header{
+							boshtbl.NewHeader("Instance"),
+							boshtbl.NewHeader("Process"),
+							boshtbl.NewHeader("Process State"),
+							boshtbl.NewHeader("AZ"),
+							boshtbl.NewHeader("IPs"),
 						},
 
 						SortBy: []boshtbl.ColumnSort{
@@ -882,6 +893,117 @@ var _ = Describe("InstancesCmd", func() {
 				err := act()
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("fake-err"))
+			})
+		})
+
+		Context("when listing multiple deployments", func() {
+			BeforeEach(func() {
+				command = NewInstancesCmd(ui, director, 5)
+			})
+
+			It("retrieves deployment vms in parallel", func() {
+				dep1 := &fakedir.FakeDeployment{
+					NameStub: func() string { return "dep1" },
+					InstanceInfosStub: func() ([]boshdir.VMInfo, error) {
+						time.Sleep(1500 * time.Millisecond)
+						return infos, nil
+					},
+				}
+				dep2 := &fakedir.FakeDeployment{
+					NameStub: func() string { return "dep2" },
+					InstanceInfosStub: func() ([]boshdir.VMInfo, error) {
+						time.Sleep(1500 * time.Millisecond)
+						return infos, nil
+					},
+				}
+				deployments := []boshdir.Deployment{
+					dep1,
+					dep2,
+				}
+
+				director.DeploymentsReturns(deployments, nil)
+				startTime := time.Now()
+				err := act()
+				cmdDuration := time.Since(startTime)
+				Expect(err).To(BeNil())
+				Expect(int64(cmdDuration / time.Millisecond)).To(BeNumerically("<", 2000))
+				Expect(dep1.InstanceInfosCallCount()).To(Equal(1))
+				Expect(dep2.InstanceInfosCallCount()).To(Equal(1))
+			})
+		})
+
+		Context("when fetching vms infos from subset of deployment fail", func() {
+			It("returns instance info and errors", func() {
+				vmError := bosherr.Error("failed")
+				dep1 := &fakedir.FakeDeployment{
+					NameStub: func() string { return "dep1" },
+					InstanceInfosStub: func() ([]boshdir.VMInfo, error) {
+						return infos, nil
+					},
+				}
+				dep2 := &fakedir.FakeDeployment{
+					NameStub: func() string { return "dep2" },
+					InstanceInfosStub: func() ([]boshdir.VMInfo, error) {
+						return nil, vmError
+					},
+				}
+				deployments := []boshdir.Deployment{
+					dep1,
+					dep2,
+				}
+				director.DeploymentsReturns(deployments, nil)
+				err := act()
+				Expect(err).To(Equal(bosherr.NewMultiError(vmError)))
+				Expect(ui.Table).To(Equal(boshtbl.Table{
+					Title: "Deployment 'dep1'",
+
+					Content: "instances",
+
+					Header: []boshtbl.Header{
+						boshtbl.NewHeader("Instance"),
+						boshtbl.NewHeader("Process State"),
+						boshtbl.NewHeader("AZ"),
+						boshtbl.NewHeader("IPs"),
+					},
+
+					SortBy: []boshtbl.ColumnSort{{Column: 0, Asc: true}, {Column: 1, Asc: true}},
+
+					Sections: []boshtbl.Section{
+						{
+							FirstColumn: boshtbl.NewValueString("job-name"),
+							Rows: [][]boshtbl.Value{
+								{
+									boshtbl.NewValueString("job-name"),
+									boshtbl.NewValueFmt(boshtbl.NewValueString("in1-process-state"), true),
+									boshtbl.ValueString{},
+									boshtbl.NewValueStrings([]string{"in1-ip1", "in1-ip2"}),
+								},
+							},
+						}, {
+							FirstColumn: boshtbl.NewValueString("job-name"),
+							Rows: [][]boshtbl.Value{
+								{
+									boshtbl.NewValueString("job-name"),
+									boshtbl.NewValueFmt(boshtbl.NewValueString("in2-process-state"), true),
+									boshtbl.NewValueString("in2-az"),
+									boshtbl.NewValueStrings([]string{"in2-ip1"}),
+								},
+							},
+						}, {
+							FirstColumn: boshtbl.NewValueString("?"),
+							Rows: [][]boshtbl.Value{
+								{
+									boshtbl.NewValueString("?"),
+									boshtbl.NewValueFmt(boshtbl.NewValueString("unresponsive agent"), true),
+									boshtbl.ValueString{},
+									boshtbl.ValueStrings{},
+								},
+							},
+						},
+					},
+				}))
+				Expect(dep1.InstanceInfosCallCount()).To(Equal(1))
+				Expect(dep2.InstanceInfosCallCount()).To(Equal(1))
 			})
 		})
 	})

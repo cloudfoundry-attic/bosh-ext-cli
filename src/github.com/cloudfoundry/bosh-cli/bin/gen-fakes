@@ -26,7 +26,7 @@ counterfeiter director ReleaseArchive
 counterfeiter director Stemcell
 counterfeiter director StemcellArchive
 counterfeiter director Task
-counterfeiter director OrphanedDisk
+counterfeiter director OrphanDisk
 counterfeiter director FileReporter
 counterfeiter director TaskReporter
 counterfeiter director Event
@@ -61,6 +61,8 @@ counterfeiter release/pkg ArchiveReader
 counterfeiter release/pkg DirReader
 counterfeiter release/pkg Compilable
 counterfeiter release/license DirReader
+
+counterfeiter stemcell ExtractedStemcell
 
 counterfeiter ssh Runner
 counterfeiter ssh SCPRunner

@@ -20,6 +20,7 @@ type DeploymentImpl struct {
 
 	releases  []Release
 	stemcells []Stemcell
+	teams     []string
 
 	fetched  bool
 	fetchErr error
@@ -62,6 +63,11 @@ func (d *DeploymentImpl) Stemcells() ([]Stemcell, error) {
 	return d.stemcells, d.fetchErr
 }
 
+func (d *DeploymentImpl) Teams() ([]string, error) {
+	d.fetch()
+	return d.teams, d.fetchErr
+}
+
 func (d *DeploymentImpl) fetch() {
 	if d.fetched {
 		return
@@ -100,6 +106,7 @@ func (d *DeploymentImpl) fill(resp DeploymentResp) {
 
 	d.releases = rels
 	d.stemcells = stems
+	d.teams = resp.Teams
 	d.cloudConfig = resp.CloudConfig
 }
 
@@ -153,8 +160,8 @@ func (d DeploymentImpl) changeJobState(state string, slug AllOrInstanceGroupOrIn
 		state, d.name, slug.Name(), slug.IndexOrID(), skipDrain, force, fix, dryRun, canaries, maxInFlight)
 }
 
-func (d DeploymentImpl) ExportRelease(release ReleaseSlug, os OSVersionSlug) (ExportReleaseResult, error) {
-	resp, err := d.client.ExportRelease(d.name, release, os)
+func (d DeploymentImpl) ExportRelease(release ReleaseSlug, os OSVersionSlug, jobs []string) (ExportReleaseResult, error) {
+	resp, err := d.client.ExportRelease(d.name, release, os, jobs)
 	if err != nil {
 		return ExportReleaseResult{}, err
 	}
@@ -399,7 +406,7 @@ func (c Client) ChangeJobState(state, deploymentName, job, indexOrID string, ski
 	return nil
 }
 
-func (c Client) ExportRelease(deploymentName string, release ReleaseSlug, os OSVersionSlug) (ExportReleaseResp, error) {
+func (c Client) ExportRelease(deploymentName string, release ReleaseSlug, os OSVersionSlug, jobs []string) (ExportReleaseResp, error) {
 	var resp ExportReleaseResp
 
 	if len(deploymentName) == 0 {
@@ -422,14 +429,21 @@ func (c Client) ExportRelease(deploymentName string, release ReleaseSlug, os OSV
 		return resp, bosherr.Error("Expected non-empty OS version")
 	}
 
+	jobFilters := []map[string]string{}
+	for _, job := range jobs {
+		jobFilters = append(jobFilters, map[string]string{"name": job})
+	}
+
 	path := "/releases/export"
 
-	body := map[string]string{
+	body := map[string]interface{}{
 		"deployment_name":  deploymentName,
 		"release_name":     release.Name(),
 		"release_version":  release.Version(),
 		"stemcell_os":      os.OS(),
 		"stemcell_version": os.Version(),
+		"sha2":             true,
+		"jobs":             jobFilters,
 	}
 
 	reqBody, err := json.Marshal(body)

@@ -6,9 +6,9 @@
 * CI: <https://main.bosh-ci.cf-app.com/teams/main/pipelines/bosh:cli>
 * Roadmap: [Pivotal Tracker](https://www.pivotaltracker.com/n/projects/956238)
 
-## Usage
+## Install
 
-- [Install](https://bosh.io/docs/cli-v2.html)
+- [https://bosh.io/docs/cli-v2.html#install](https://bosh.io/docs/cli-v2.html#install)
 
 ## Client Library
 

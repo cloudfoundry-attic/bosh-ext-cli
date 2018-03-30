@@ -30,37 +30,32 @@ var _ = Describe("RenderedJobListArchive", func() {
 
 	var (
 		outBuffer *bytes.Buffer
-		errBuffer *bytes.Buffer
 		logger    boshlog.Logger
 		fs        *fakeboshsys.FakeFileSystem
 
 		mockRenderedJobList *mock_template.MockRenderedJobList
 
-		renderedJobListArchivePath string
-		renderedJobListFingerprint string
-		renderedJobListArchiveSHA1 string
+		renderedJobListArchivePath   string
+		renderedJobListArchiveDigest string
 
 		renderedJobListArchive RenderedJobListArchive
 	)
 
 	BeforeEach(func() {
 		outBuffer = bytes.NewBufferString("")
-		errBuffer = bytes.NewBufferString("")
-		logger = boshlog.NewWriterLogger(boshlog.LevelDebug, outBuffer, errBuffer)
+		logger = boshlog.NewWriterLogger(boshlog.LevelDebug, outBuffer)
 
 		fs = fakeboshsys.NewFakeFileSystem()
 
 		mockRenderedJobList = mock_template.NewMockRenderedJobList(mockCtrl)
 
 		renderedJobListArchivePath = "fake-archive-path"
-		renderedJobListFingerprint = "fake-fingerprint"
-		renderedJobListArchiveSHA1 = "fake-sha1"
+		renderedJobListArchiveDigest = "fake-sha1"
 
 		renderedJobListArchive = NewRenderedJobListArchive(
 			mockRenderedJobList,
 			renderedJobListArchivePath,
-			renderedJobListFingerprint,
-			renderedJobListArchiveSHA1,
+			renderedJobListArchiveDigest,
 			fs, logger)
 	})
 
@@ -76,15 +71,9 @@ var _ = Describe("RenderedJobListArchive", func() {
 		})
 	})
 
-	Describe("Fingerprint", func() {
-		It("returns the rendered job list fingerprint", func() {
-			Expect(renderedJobListArchive.Fingerprint()).To(Equal(renderedJobListFingerprint))
-		})
-	})
-
 	Describe("SHA1", func() {
 		It("returns the rendered job list archive sha1", func() {
-			Expect(renderedJobListArchive.SHA1()).To(Equal(renderedJobListArchiveSHA1))
+			Expect(renderedJobListArchive.SHA1()).To(Equal(renderedJobListArchiveDigest))
 		})
 	})
 
@@ -132,9 +121,9 @@ var _ = Describe("RenderedJobListArchive", func() {
 			It("logs the error", func() {
 				renderedJobListArchive.DeleteSilently()
 
-				errorLogString := errBuffer.String()
-				Expect(errorLogString).To(ContainSubstring("Failed to delete rendered job list archive"))
-				Expect(errorLogString).To(ContainSubstring("fake-delete-error"))
+				log := outBuffer.String()
+				Expect(log).To(ContainSubstring("Failed to delete rendered job list archive"))
+				Expect(log).To(ContainSubstring("fake-delete-error"))
 			})
 		})
 	})

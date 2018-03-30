@@ -46,8 +46,8 @@ func (c Cmd) Execute() (cmdErr error) {
 		_, relDirProv := c.releaseProviders()
 
 		releaseDirFactory := func(dir boshcmd.DirOrCWDArg) (boshrel.Reader, boshreldir.ReleaseDir) {
-			releaseReader := relDirProv.NewReleaseReader(dir.Path)
-			releaseDir := relDirProv.NewFSReleaseDir(dir.Path)
+			releaseReader := relDirProv.NewReleaseReader(dir.Path, 1)
+			releaseDir := relDirProv.NewFSReleaseDir(dir.Path, 1)
 			return releaseReader, releaseDir
 		}
 
@@ -72,7 +72,7 @@ func (c Cmd) Execute() (cmdErr error) {
 		return NewWebCmd(deps.CmdRunner, deps.UI, deps.Logger).Run(*opts)
 
 	case *MessageOpts:
-		deps.UI.PrintBlock(opts.Message)
+		deps.UI.PrintBlock([]byte(opts.Message))
 		return nil
 
 	default:
@@ -108,18 +108,20 @@ func (c Cmd) releaseProviders() (boshrel.Provider, boshreldir.Provider) {
 	releaseIndexReporter := boshui.NewReleaseIndexReporter(c.deps.UI)
 
 	releaseProvider := boshrel.NewProvider(
-		c.deps.CmdRunner, c.deps.Compressor, c.deps.SHA1Calc, c.deps.FS, c.deps.Logger)
+		c.deps.CmdRunner, c.deps.Compressor, c.deps.DigestCalculator,
+		c.deps.FS, c.deps.Logger)
 
 	releaseDirProvider := boshreldir.NewProvider(
 		indexReporter, releaseIndexReporter, blobsReporter, releaseProvider,
-		c.deps.SHA1Calc, c.deps.CmdRunner, c.deps.UUIDGen, c.deps.Time, c.deps.FS, c.deps.Logger)
+		c.deps.DigestCalculator, c.deps.CmdRunner, c.deps.UUIDGen, c.deps.Time,
+		c.deps.FS, c.deps.DigestCreationAlgorithms, c.deps.Logger)
 
 	return releaseProvider, releaseDirProvider
 }
 
 func (c Cmd) releaseDir(dir boshcmd.DirOrCWDArg) boshreldir.ReleaseDir {
 	_, relDirProv := c.releaseProviders()
-	return relDirProv.NewFSReleaseDir(dir.Path)
+	return relDirProv.NewFSReleaseDir(dir.Path, 1)
 }
 
 func (c Cmd) panicIfErr(err error) {

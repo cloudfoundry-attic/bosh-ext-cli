@@ -8,6 +8,7 @@ import (
 	boshlog "github.com/cloudfoundry/bosh-utils/logger"
 
 	. "github.com/cloudfoundry/bosh-cli/ui/table"
+	"strconv"
 )
 
 type jsonUI struct {
@@ -26,8 +27,8 @@ type uiResp struct {
 
 type tableResp struct {
 	Content string
-	Header  []string
-	Rows    [][]string
+	Header  map[string]string
+	Rows    []map[string]string
 	Notes   []string
 }
 
@@ -51,8 +52,8 @@ func (ui *jsonUI) EndLinef(pattern string, args ...interface{}) {
 	ui.addLine(pattern, args)
 }
 
-func (ui *jsonUI) PrintBlock(block string) {
-	ui.uiResp.Blocks = append(ui.uiResp.Blocks, block)
+func (ui *jsonUI) PrintBlock(block []byte) {
+	ui.uiResp.Blocks = append(ui.uiResp.Blocks, string(block))
 }
 
 func (ui *jsonUI) PrintErrorBlock(block string) {
@@ -62,20 +63,37 @@ func (ui *jsonUI) PrintErrorBlock(block string) {
 func (ui *jsonUI) PrintTable(table Table) {
 	table.FillFirstColumn = true
 
-	var header []string
+	header := map[string]string{}
 
-	if len(table.HeaderVals) > 0 {
-		for _, val := range table.HeaderVals {
-			header = append(header, val.String())
+	if len(table.Header) > 0 {
+		for i, val := range table.Header {
+			if val.Hidden {
+				continue
+			}
+
+			if val.Key == string(UNKNOWN_HEADER_MAPPING) {
+				table.Header[i].Key = strconv.Itoa(i)
+			}
+
+			header[table.Header[i].Key] = val.Title
 		}
-	} else if len(table.Header) > 0 {
-		header = table.Header
+	} else if len(table.AsRows()) > 0 {
+		var rawHeaders []Header
+		for i, _ := range table.AsRows()[0] {
+			val := Header{
+				Key:    fmt.Sprintf("col_%d", i),
+				Hidden: false,
+			}
+			header[val.Key] = val.Title
+			rawHeaders = append(rawHeaders, val)
+		}
+		table.Header = rawHeaders
 	}
 
 	resp := tableResp{
 		Content: table.Content,
 		Header:  header,
-		Rows:    ui.stringRows(table.AsRows()),
+		Rows:    ui.stringRows(table.Header, table.AsRows()),
 		Notes:   table.Notes,
 	}
 
@@ -112,21 +130,25 @@ func (ui *jsonUI) Flush() {
 			return
 		}
 
-		ui.parent.PrintBlock(string(bytes))
+		ui.parent.PrintBlock(bytes)
 	}
 }
 
-func (ui *jsonUI) stringRows(vals [][]Value) [][]string {
-	var result [][]string
+func (ui *jsonUI) stringRows(header []Header, rows [][]Value) []map[string]string {
+	result := []map[string]string{}
 
-	for _, row := range vals {
-		var strs []string
+	for _, row := range rows {
+		data := map[string]string{}
 
-		for _, v := range row {
-			strs = append(strs, v.String())
+		for i, col := range row {
+			if header[i].Hidden {
+				continue
+			}
+
+			data[header[i].Key] = col.String()
 		}
 
-		result = append(result, strs)
+		result = append(result, data)
 	}
 
 	return result

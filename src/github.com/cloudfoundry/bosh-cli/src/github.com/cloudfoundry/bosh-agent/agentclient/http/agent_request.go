@@ -18,7 +18,7 @@ type AgentRequestMessage struct {
 type agentRequest struct {
 	directorID string
 	endpoint   string
-	httpClient httpclient.HTTPClient
+	httpClient *httpclient.HTTPClient
 }
 
 func (r agentRequest) Send(method string, arguments []interface{}, response Response) error {
@@ -33,9 +33,12 @@ func (r agentRequest) Send(method string, arguments []interface{}, response Resp
 		return bosherr.WrapError(err, "Marshaling agent request")
 	}
 
-	httpResponse, err := r.httpClient.Post(r.endpoint, agentRequestJSON)
+	httpResponse, err := r.httpClient.PostCustomized(r.endpoint, agentRequestJSON, func(r *http.Request) {
+		r.Header["Content-type"] = []string{"application/json"}
+	})
+
 	if err != nil {
-		return bosherr.WrapErrorf(err, "Performing request to agent endpoint '%s'", r.endpoint)
+		return bosherr.WrapErrorf(err, "Performing request to agent")
 	}
 	defer func() {
 		_ = httpResponse.Body.Close()

@@ -2,6 +2,7 @@ package ssh
 
 import (
 	"os"
+	"syscall"
 	"time"
 
 	bosherr "github.com/cloudfoundry/bosh-utils/errors"
@@ -49,10 +50,10 @@ func NewComboRunner(
 	}
 }
 
-func (r ComboRunner) Run(connOpts ConnectionOpts, result boshdir.SSHResult, cmdFactory func(boshdir.Host) boshsys.Command) error {
+func (r ComboRunner) Run(connOpts ConnectionOpts, result boshdir.SSHResult, cmdFactory func(boshdir.Host, SSHArgs) boshsys.Command) error {
 	sess := r.sessionFactory(connOpts, result)
 
-	sshOpts, err := sess.Start()
+	sshArgs, err := sess.Start()
 	if err != nil {
 		return bosherr.WrapErrorf(err, "Setting up SSH session")
 	}
@@ -65,7 +66,7 @@ func (r ComboRunner) Run(connOpts ConnectionOpts, result boshdir.SSHResult, cmdF
 
 	go r.setUpInterrupt(cancelCh, sess)
 
-	cmds := r.makeCmds(result.Hosts, sshOpts, cmdFactory)
+	cmds := r.makeCmds(result.Hosts, sshArgs, cmdFactory)
 
 	ps, doneCh := r.runCmds(cmds)
 
@@ -77,15 +78,11 @@ type comboRunnerCmd struct {
 	InstanceWriter
 }
 
-func (r ComboRunner) makeCmds(hosts []boshdir.Host, sshOpts []string, cmdFactory func(boshdir.Host) boshsys.Command) []comboRunnerCmd {
+func (r ComboRunner) makeCmds(hosts []boshdir.Host, sshArgs SSHArgs, cmdFactory func(boshdir.Host, SSHArgs) boshsys.Command) []comboRunnerCmd {
 	var cmds []comboRunnerCmd
 
 	for _, host := range hosts {
-		cmd := cmdFactory(host)
-
-		copiedSSHOpts := make([]string, len(sshOpts))
-		copy(copiedSSHOpts, sshOpts)
-		cmd.Args = append(copiedSSHOpts, cmd.Args...)
+		cmd := cmdFactory(host, sshArgs)
 
 		jobName := "?"
 		if len(host.Job) > 0 {
@@ -191,12 +188,12 @@ func (r ComboRunner) waitProcs(ps []boshsys.Process, doneCh chan []boshsys.Resul
 func (r ComboRunner) setUpInterrupt(cancelCh chan<- struct{}, sess Session) {
 	signalCh := make(chan os.Signal, 1)
 
-	r.signalNotifyFunc(signalCh, os.Interrupt)
+	r.signalNotifyFunc(signalCh, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)
 
-	for _ = range signalCh {
-		r.logger.Debug(r.logTag, "Received an interrupt")
+	for sig := range signalCh {
+		r.logger.Debug(r.logTag, "Received a signal: %v", sig)
 
-		r.ui.PrintLinef("\nReceived an interrupt, exiting...\n")
+		r.ui.PrintLinef("\nReceived a signal, exiting...\n")
 
 		// Aggressively clear session, even though it may be cleared later
 		_ = sess.Finish()
