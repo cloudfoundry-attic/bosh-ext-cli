@@ -11,6 +11,12 @@ $ out/bosh-ext lint-release
 $ out/bosh-ext lint-release --dir ~/workspace/whatever-release
 ```
 
+- Lint manifest
+
+```
+$ out/bosh-ext lint-manifest manifest.yml
+```
+
 - Show detailed Director task debug information
 
 ```
