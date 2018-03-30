@@ -1,33 +1,40 @@
-# bosh-lint
+# bosh-ext-cli
 
-bosh-lint is a tool that gives suggestions for BOSH releases and other assets.
+BOSH Extended CLI is a tool that provides additional set of commands for interacting with BOSH and release authoring
 
 ## Commands
 
-```
-# Lint release directory and show suggestions
-$ bosh-lint lint-release
-
-# Show detailed Director task debug information
-$ bosh task X --debug | bosh-lint debug-task -
-$ bosh task X --debug | bosh-lint debug-task - -a
-$ bosh task X --debug | bosh-lint debug-task - -a -s duration
-$ bosh task X --debug | bosh-lint debug-task - -l
-```
-
-## Development
+- Lint release directory and show suggestions
 
 ```
-$ source .envrc
-$ bin/build
-$ out/bosh-lint lint-release --dir ~/workspace/whatever-release
+$ out/bosh-ext lint-release
+$ out/bosh-ext lint-release --dir ~/workspace/whatever-release
 ```
 
-Run `web` command:
+- Show detailed Director task debug information
+
+```
+$ bosh task X --debug | out/bosh-ext debug-task -
+$ bosh task X --debug | out/bosh-ext debug-task - -a
+$ bosh task X --debug | out/bosh-ext debug-task - -a -s duration
+$ bosh task X --debug | out/bosh-ext debug-task - -l
+```
+
+- Web extension
 
 ```
 $ export BOSH_ENVIRONMENT=vbox
-$ out/bosh-lint web
+$ out/bosh-ext web
+```
+
+## Build & Development
+
+```
+$ git clone ...
+$ cd bosh-ext-cli
+$ source .envrc
+$ bin/build
+$ out/bosh-ext -v
 ```
 
 ## Todo

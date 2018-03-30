@@ -1,5 +1,12 @@
 #!/bin/bash
 
-go fmt github.com/cppforlife/bosh-lint/...
+set -e -x
 
-go build -o out/bosh-lint github.com/cppforlife/bosh-lint
+echo "Formatting"
+go fmt github.com/bosh-tools/bosh-ext-cli/...
+
+echo "Building"
+go build -o out/bosh-ext github.com/bosh-tools/bosh-ext-cli
+
+echo "Done"
+out/bosh-ext -v

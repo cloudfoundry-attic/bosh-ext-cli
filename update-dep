@@ -11,9 +11,9 @@ rm -f $deps
 cd src
 
 # Remove all deps
-find * -maxdepth 3 -type d | grep -v '^github.com\(/cppforlife\(/bosh-lint.*\)*\)*$' | xargs rm -rf
+find * -maxdepth 3 -type d | grep -v '^github.com\(/bosh-tools\(/bosh-ext-cli.*\)*\)*$' | xargs rm -rf
 
-go get -d -t -v github.com/cppforlife/bosh-lint/...
+go get -d -t -v github.com/bosh-tools/bosh-ext-cli/...
 
 # Secondary GOPATH
 mv github.com/cloudfoundry/bosh-cli/{vendor,src}
