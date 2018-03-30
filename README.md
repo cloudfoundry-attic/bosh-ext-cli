@@ -20,7 +20,7 @@ $ bosh task X --debug | out/bosh-ext debug-task - -a -s duration
 $ bosh task X --debug | out/bosh-ext debug-task - -l
 ```
 
-- Web extension
+- Web view (useful with information dense commands such as `bosh events`)
 
 ```
 $ export BOSH_ENVIRONMENT=vbox
