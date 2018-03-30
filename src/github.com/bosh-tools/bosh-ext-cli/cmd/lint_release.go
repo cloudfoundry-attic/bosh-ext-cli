@@ -8,7 +8,7 @@ import (
 	bosherr "github.com/cloudfoundry/bosh-utils/errors"
 	boshsys "github.com/cloudfoundry/bosh-utils/system"
 
-	lintrel "github.com/bosh-tools/bosh-ext-cli/release"
+	lintrel "github.com/bosh-tools/bosh-ext-cli/lint/release"
 )
 
 type LintReleaseCmd struct {

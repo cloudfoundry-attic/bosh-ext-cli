@@ -4,7 +4,7 @@ import (
 	boshui "github.com/cloudfoundry/bosh-cli/ui"
 	bosherr "github.com/cloudfoundry/bosh-utils/errors"
 
-	lintman "github.com/bosh-tools/bosh-ext-cli/manifest"
+	lintman "github.com/bosh-tools/bosh-ext-cli/lint/manifest"
 )
 
 type LintManifestCmd struct {

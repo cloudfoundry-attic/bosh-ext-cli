@@ -4,7 +4,7 @@ import (
 	boshui "github.com/cloudfoundry/bosh-cli/ui"
 	boshtbl "github.com/cloudfoundry/bosh-cli/ui/table"
 
-	check "github.com/bosh-tools/bosh-ext-cli/check"
+	check "github.com/bosh-tools/bosh-ext-cli/lint/check"
 )
 
 type ChecksTable struct {
